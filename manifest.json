@@ -1,0 +1,25 @@
+{
+  "manifest_version": 3,
+  "name": "TBO Flight Search Interceptor",
+  "version": "1.1",
+  "description": "Intercepts FlightReturnSearchAjax flight search requests and paginates through results automatic.",
+  "permissions": [
+    "webRequest",
+    "storage",
+    "downloads",
+    "unlimitedStorage"
+  ],
+  "host_permissions": [
+    "https://m.travelboutiqueonline.com/*"
+  ],
+  "background": {
+    "service_worker": "service_worker.js"
+  },
+  "action": {
+    "default_popup": "popup.html",
+    "default_title": "TBO Interceptor"
+  },
+  "icons": {
+    "16": "icon16.png"
+  }
+}

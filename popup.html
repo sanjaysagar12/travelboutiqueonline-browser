@@ -1,0 +1,169 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>TBO Interceptor</title>
+    <style>
+        body {
+            width: 320px;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            padding: 15px;
+            margin: 0;
+            background-color: #f9f9f9;
+            color: #333;
+        }
+
+        h2 {
+            text-align: center;
+            margin-top: 0;
+            color: #0056b3;
+            font-size: 18px;
+        }
+
+        .status-box {
+            background: #fff;
+            border: 1px solid #ddd;
+            border-radius: 5px;
+            padding: 10px;
+            margin-bottom: 15px;
+            text-align: center;
+        }
+
+        .status-indicator {
+            font-weight: bold;
+            margin-bottom: 5px;
+            display: block;
+            font-size: 14px;
+        }
+
+        .status-idle {
+            color: #666;
+        }
+
+        .status-ready {
+            color: #d35400;
+        }
+
+        .status-scraping {
+            color: #27ae60;
+        }
+
+        .status-finished {
+            color: #2980b9;
+        }
+
+        .stats {
+            font-size: 13px;
+            color: #555;
+            display: flex;
+            justify-content: space-between;
+            margin-top: 8px;
+            border-top: 1px solid #eee;
+            padding-top: 8px;
+        }
+
+        .controls {
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+        }
+
+        button {
+            padding: 10px;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            font-weight: 600;
+            transition: background 0.2s;
+        }
+
+        #startBtn {
+            background-color: #0056b3;
+            color: white;
+        }
+
+        #startBtn:hover {
+            background-color: #004494;
+        }
+
+        #startBtn:disabled {
+            background-color: #95a5a6;
+            cursor: not-allowed;
+        }
+
+        #stopBtn {
+            background-color: #c0392b;
+            color: white;
+        }
+
+        #stopBtn:hover {
+            background-color: #e74c3c;
+        }
+
+        #stopBtn:disabled {
+            background-color: #bdc3c7;
+            cursor: not-allowed;
+        }
+
+        #clearBtn {
+            background-color: #ecf0f1;
+            border: 1px solid #ccc;
+            color: #333;
+        }
+
+        #clearBtn:hover {
+            background-color: #bdc3c7;
+        }
+
+        .footer {
+            margin-top: 15px;
+            font-size: 10px;
+            text-align: center;
+            color: #999;
+            border-top: 1px solid #eee;
+            padding-top: 10px;
+        }
+
+        .info {
+            font-size: 11px;
+            background: #eaf2f8;
+            padding: 5px;
+            border-radius: 3px;
+            margin-bottom: 10px;
+        }
+    </style>
+</head>
+
+<body>
+    <h2>TBO Interceptor v2</h2>
+
+    <div class="info">
+        1. Browse to Flight Results.<br>
+        2. Wait for "Request Captured".<br>
+        3. Click Start.
+    </div>
+
+    <div class="status-box">
+        <span id="statusText" class="status-indicator status-idle">Waiting...</span>
+        <div class="stats">
+            <span>Pages: <strong id="pageCount">0</strong></span>
+            <span>Last: <span id="lastTime">-</span></span>
+        </div>
+    </div>
+
+    <div class="controls">
+        <button id="startBtn" disabled>Wait for Request...</button>
+        <button id="stopBtn" disabled>Stop</button>
+        <button id="clearBtn">Reset / Clear</button>
+    </div>
+
+    <div class="footer">
+        Target: FlightReturnSearchAjax.aspx
+    </div>
+
+    <script src="popup.js"></script>
+</body>
+
+</html>
