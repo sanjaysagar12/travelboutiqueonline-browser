@@ -1,19 +1,46 @@
 // TBO Flight Search Interceptor - Service Worker
 
 let state = {
-    isListening: true, // Default to true to catch requests passively
+    isListening: true,
     isScraping: false,
-    capturedRequest: null, // { url, method, headers }
+    capturedRequest: null,
     currentPage: 0,
-    stopRequested: false
+    stopRequested: false,
+    scrapedData: [] // Store parsed objects here
 };
 
-// Listen for messages from popup
+// --- Offscreen Management ---
+async function setupOffscreenDocument(path) {
+    // Check if offscreen document exists
+    const existingContexts = await chrome.runtime.getContexts({
+        contextTypes: ['OFFSCREEN_DOCUMENT'],
+        documentUrls: [path]
+    });
+
+    if (existingContexts.length > 0) {
+        return;
+    }
+
+    // Create offscreen document
+    if (chrome.offscreen) {
+        await chrome.offscreen.createDocument({
+            url: path,
+            reasons: ['DOM_PARSER'],
+            justification: 'Parse flight HTML results',
+        });
+    } else {
+        console.warn("chrome.offscreen API not available (Requires MV3 & Chrome 109+)");
+    }
+}
+
+// Ensure offscreen is ready when we start
+setupOffscreenDocument('offscreen.html');
+
+// --- Messaging ---
 chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
     if (request.action === 'GET_STATUS') {
-        // Popup polling
         sendStatusForPopup(sendResponse);
-        return true; // Keep channel open
+        return true;
     }
 
     if (request.action === 'START_SCRAPE') {
@@ -23,13 +50,14 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
         }
         state.isScraping = true;
         state.stopRequested = false;
-        chrome.storage.local.set({ status: 'scraping', pagesDownloaded: 0 });
+        state.scrapedData = []; // Clear previous run
+        chrome.storage.local.set({ status: 'scraping', pagesDownloaded: 0, flightData: [] });
+
         startPaginationLoop();
         sendResponse({ success: true });
     } else if (request.action === 'STOP_SCRAPE') {
         state.isScraping = false;
         state.stopRequested = true;
-        chrome.storage.local.set({ status: 'ready' }); // Go back to ready if stopped?
         console.log('Stop requested.');
         sendResponse({ success: true });
     } else if (request.action === 'CLEAR_DATA') {
@@ -38,8 +66,11 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
         state.isScraping = false;
         state.isListening = true;
         state.currentPage = 0;
-        chrome.storage.local.set({ status: 'idle' });
+        state.scrapedData = [];
+        chrome.storage.local.set({ status: 'idle', flightData: [] });
         sendResponse({ success: true });
+    } else if (request.action === 'OPEN_DASHBOARD') {
+        chrome.tabs.create({ url: 'dashboard.html' });
     }
 });
 
@@ -54,24 +85,18 @@ function sendStatusForPopup(sendResponse) {
     });
 }
 
-// Intercept Network Requests
+// --- Request Interception ---
 chrome.webRequest.onBeforeRequest.addListener(
     (details) => {
-        // If we are already scraping, don't mess with state.
         if (state.isScraping) return;
 
-        // Check for target
         if (details.url.includes('FlightReturnSearchAjax.aspx')) {
             console.log('Intercepted target request:', details.url);
-
-            // Store the request details
             state.capturedRequest = {
                 url: details.url,
                 method: details.method,
-                // For GET requests, body is undefined. We rely on URL parameters.
             };
 
-            // We don't auto-start. We just update status to 'ready'
             chrome.storage.local.set({
                 status: 'ready',
                 lastCaptureTime: Date.now()
@@ -84,18 +109,18 @@ chrome.webRequest.onBeforeRequest.addListener(
             "https://m.travelboutiqueonline.com/*/FlightReturnSearchAjax.aspx*"
         ]
     }
-    // removed ["requestBody"] since it might be GET and we don't strictly need it for GET
 );
 
+// --- Loop ---
 async function startPaginationLoop() {
     console.log('Starting pagination loop...');
-    state.currentPage = 0; // Or start from 0 as requested
+    state.currentPage = 0;
 
     while (!state.stopRequested) {
         try {
             console.log(`Fetching page ${state.currentPage}...`);
 
-            const success = await fetchPage(state.currentPage);
+            const success = await fetchAndParsePage(state.currentPage);
 
             if (!success) {
                 console.log('Pagination stopped (no results or error).');
@@ -105,12 +130,11 @@ async function startPaginationLoop() {
             // Update UI state
             chrome.storage.local.set({
                 pagesDownloaded: state.currentPage + 1,
-                lastCaptureTime: Date.now()
+                lastCaptureTime: Date.now(),
+                flightData: state.scrapedData // Update storage incrementally
             });
 
             state.currentPage++;
-
-            // Safety delay
             await new Promise(r => setTimeout(r, 2000));
 
         } catch (err) {
@@ -123,15 +147,16 @@ async function startPaginationLoop() {
     state.stopRequested = false;
     chrome.storage.local.set({ status: 'finished' });
     console.log('Scraping session finished.');
+
+    // Open Dashboard automatically on finish?
+    chrome.tabs.create({ url: 'dashboard.html' });
 }
 
-async function fetchPage(pageNumber) {
+async function fetchAndParsePage(pageNumber) {
     if (!state.capturedRequest) return false;
 
     let fetchUrl;
-
     try {
-        // Modify URL parameters
         const urlObj = new URL(state.capturedRequest.url);
         urlObj.searchParams.set('pageNumber', pageNumber);
         fetchUrl = urlObj.toString();
@@ -140,12 +165,9 @@ async function fetchPage(pageNumber) {
         return false;
     }
 
-    // Perform Fetch
     try {
         const response = await fetch(fetchUrl, {
-            method: state.capturedRequest.method, // Likely GET
-            // No specific body for GET
-            // Cookies are handled by browser session automatically for same-origin/extension host permissions
+            method: state.capturedRequest.method,
         });
 
         if (!response.ok) {
@@ -155,42 +177,29 @@ async function fetchPage(pageNumber) {
 
         const html = await response.text();
 
-        // Check for empty results
         if (!html || html.length < 100) {
-            console.log("Response too short, assuming end.");
             return false;
         }
 
-        savePage(html, pageNumber, fetchUrl);
-        return true;
+        // --- PARSE VIA OFFSCREEN ---
+        // If chrome.offscreen is missing (e.g. older chrome), we fail gracefully or try regex? 
+        // Assuming MV3 environment.
+        const parsedData = await chrome.runtime.sendMessage({
+            action: 'PARSE_HTML',
+            htmlChunk: html
+        });
+
+        if (parsedData && parsedData.length > 0) {
+            state.scrapedData.push(...parsedData);
+            return true;
+        } else {
+            // If parsing return 0 flights, maybe it's an end page or just empty results
+            // We can treat it as end of pagination if standard behavior
+            return false;
+        }
 
     } catch (err) {
         console.error("Fetch error:", err);
         return false;
     }
-}
-
-function savePage(htmlContent, pageNum, url) {
-    const updateTime = new Date().toISOString().replace(/[:.]/g, '-');
-    const filename = `flight_page_${pageNum}_${updateTime}.html`;
-    const dataUrl = 'data:text/html;charset=utf-8,' + encodeURIComponent(htmlContent);
-
-    chrome.downloads.download({
-        url: dataUrl,
-        filename: filename,
-        saveAs: false
-    });
-
-    // Logging/Storage
-    const storageKey = `page_${pageNum}`;
-    const storageData = {
-        pageNumber: pageNum,
-        url: url,
-        htmlResponse: htmlContent.substring(0, 500) + "...", // Truncate for storage to save space, assuming file download is primary
-        timestamp: Date.now()
-    };
-
-    let items = {};
-    items[storageKey] = storageData;
-    chrome.storage.local.set(items);
 }
