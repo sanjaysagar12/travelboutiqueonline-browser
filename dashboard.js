@@ -35,6 +35,15 @@ function loadData() {
                 return flight;
             });
 
+            // Update Header with Route Info
+            if (allData.length > 0) {
+                const first = allData[0];
+                const origin = first.Origin || 'Origin';
+                const dest = first.Destination || 'Destination';
+                document.getElementById('pageTitle').textContent = "Flight Results";
+                document.getElementById('routeSubtitle').textContent = `${origin} ➝ ${dest} | ${allData.length} Flights Found`;
+            }
+
             identifyColumns();
             renderTable();
             populateColSelect();

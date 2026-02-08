@@ -4,129 +4,16 @@
 <head>
     <meta charset="UTF-8">
     <title>Flight Data Dashboard</title>
-    <style>
-        body {
-            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-            padding: 20px;
-            background: #f4f6f8;
-        }
-
-        h1 {
-            color: #2c3e50;
-        }
-
-        .controls {
-            background: white;
-            padding: 15px;
-            border-radius: 8px;
-            box-shadow: 0 2px 5px rgba(0, 0, 0, 0.05);
-            margin-bottom: 20px;
-            display: flex;
-            gap: 20px;
-            align-items: center;
-            flex-wrap: wrap;
-        }
-
-        .control-group {
-            display: flex;
-            align-items: center;
-            gap: 10px;
-            border-right: 1px solid #eee;
-            padding-right: 20px;
-        }
-
-        .control-group:last-child {
-            border-right: none;
-        }
-
-        label {
-            font-size: 14px;
-            font-weight: 600;
-            color: #555;
-        }
-
-        input[type="number"] {
-            padding: 6px;
-            border: 1px solid #ddd;
-            border-radius: 4px;
-            width: 80px;
-        }
-
-        select {
-            padding: 6px;
-            border: 1px solid #ddd;
-            border-radius: 4px;
-        }
-
-        button {
-            background: #3498db;
-            color: white;
-            border: none;
-            padding: 8px 16px;
-            border-radius: 4px;
-            cursor: pointer;
-            font-weight: 600;
-        }
-
-        button:hover {
-            background: #2980b9;
-        }
-
-        button.success {
-            background: #27ae60;
-        }
-
-        button.success:hover {
-            background: #219150;
-        }
-
-        .table-container {
-            overflow-x: auto;
-            background: white;
-            border-radius: 8px;
-            box-shadow: 0 2px 10px rgba(0, 0, 0, 0.05);
-        }
-
-        table {
-            width: 100%;
-            border-collapse: collapse;
-            min-width: 1000px;
-        }
-
-        th,
-        td {
-            padding: 12px 15px;
-            text-align: left;
-            border-bottom: 1px solid #eee;
-            font-size: 14px;
-        }
-
-        th {
-            background: #f8f9fa;
-            font-weight: 600;
-            color: #555;
-            position: sticky;
-            top: 0;
-        }
-
-        tr:hover {
-            background: #f1f2f6;
-        }
-
-        .empty-price {
-            color: #ccc;
-            font-style: italic;
-        }
-
-        .price-val {
-            font-family: 'Consolas', monospace;
-            color: #2c3e50;
-        }
-    </style>
+    <meta charset="UTF-8">
+    <title>Flight Data Dashboard</title>
+    <link rel="stylesheet" href="dashboard.css">
 </head>
 
 <body>
-    <h1>Flight Data Dashboard</h1>
+    <div class="header">
+        <h1 id="pageTitle">Flight Data Dashboard</h1>
+        <div id="routeSubtitle" class="subtitle">Waiting for data...</div>
+    </div>
 
     <div class="controls">
         <div class="control-group">
