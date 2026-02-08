@@ -216,33 +216,40 @@ function exportCSV() {
 }
 
 // --- Copy for Email ---
+// --- Copy for Email ---
 function copyForEmail() {
     if (allData.length === 0) return alert("No data to copy");
 
     const headers = [...baseColumns, ...fareColumns];
 
     // Create HTML string with inline styles for email compatibility
+    // Style: Clean, white background, light gray borders, distinct header
     let html = `
-        <table border="1" style="border-collapse: collapse; width: 100%; font-family: Arial, sans-serif; font-size: 12px; border: 1px solid #ddd;">
-            <thead style="background-color: #f2f2f2;">
+        <table border="0" cellpadding="0" cellspacing="0" style="border-collapse: collapse; width: 100%; font-family: Arial, sans-serif; font-size: 13px; color: #333; border: 1px solid #e5e7eb;">
+            <thead style="background-color: #f9fafb;">
                 <tr>`;
 
     headers.forEach(h => {
-        html += `<th style="padding: 8px; border: 1px solid #ddd; text-align: left;">${h}</th>`;
+        html += `<th style="padding: 12px 16px; border-bottom: 2px solid #e5e7eb; text-align: left; font-weight: 600; color: #374151; text-transform: uppercase; font-size: 11px; letter-spacing: 0.05em;">${h}</th>`;
     });
 
     html += `</tr></thead><tbody>`;
 
-    allData.forEach(row => {
-        html += `<tr>`;
+    allData.forEach((row, index) => {
+        // Zebra striping for better readability
+        const bg = index % 2 === 0 ? '#ffffff' : '#f9fafb';
+        html += `<tr style="background-color: ${bg};">`;
+
         headers.forEach(h => {
             let val = row[h];
+            let cellStyle = `padding: 12px 16px; border-bottom: 1px solid #e5e7eb; vertical-align: top;`;
+
             if (fareColumns.includes(h) && val && !isNaN(parseFloat(val))) {
-                // Determine if this cell has been marked up slightly differently? No, just copy values
-                // Align numbers to right maybe?
-                html += `<td style="padding: 8px; border: 1px solid #ddd; text-align: right;">${parseFloat(val).toFixed(2)}</td>`;
+                // Price formatting
+                html += `<td style="${cellStyle} text-align: right; font-family: Consolas, monospace; font-weight: 600; color: #111827;">${parseFloat(val).toFixed(2)}</td>`;
             } else {
-                html += `<td style="padding: 8px; border: 1px solid #ddd;">${val !== undefined ? val : ''}</td>`;
+                // Regular text
+                html += `<td style="${cellStyle} color: #4b5563;">${val !== undefined ? val : ''}</td>`;
             }
         });
         html += `</tr>`;
