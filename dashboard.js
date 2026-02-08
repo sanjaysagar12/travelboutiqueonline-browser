@@ -2,7 +2,7 @@
 
 let allData = [];
 let fareColumns = [];
-const baseColumns = ["Airline", "FlightNumber", "DepartureTime", "Origin", "ArrivalTime", "Destination", "Duration", "Stops"];
+const baseColumns = ["Airline", "Flight #", "DepartureTime", "Origin", "ArrivalTime", "Destination", "Duration", "Stops"];
 
 document.addEventListener('DOMContentLoaded', () => {
     loadData();
@@ -17,7 +17,24 @@ document.addEventListener('DOMContentLoaded', () => {
 function loadData() {
     chrome.storage.local.get(['flightData'], (result) => {
         if (result.flightData && Array.isArray(result.flightData)) {
-            allData = result.flightData;
+            // Normalize Data
+            allData = result.flightData.map(flight => {
+                // Rename FlightNumber -> Flight #
+                if (flight.FlightNumber) {
+                    flight['Flight #'] = flight.FlightNumber;
+                    delete flight.FlightNumber;
+                }
+                // Stops
+                if (flight.Stops === '0 Stop') {
+                    flight.Stops = 'No Stop';
+                }
+                // Duration
+                if (flight.Duration) {
+                    flight.Duration = flight.Duration.replace(/h/g, 'H').replace(/m/g, 'M');
+                }
+                return flight;
+            });
+
             identifyColumns();
             renderTable();
             populateColSelect();
@@ -28,15 +45,37 @@ function loadData() {
 }
 
 function identifyColumns() {
-    const fares = new Set();
+    const allKeys = new Set();
     allData.forEach(flight => {
         Object.keys(flight).forEach(key => {
             if (!baseColumns.includes(key)) {
-                fares.add(key);
+                allKeys.add(key);
             }
         });
     });
-    fareColumns = Array.from(fares).sort();
+
+    // Filter out columns that are completely empty (all values are missing/0)
+    fareColumns = Array.from(allKeys).filter(col => {
+        return allData.some(flight => {
+            const val = flight[col];
+            // Keep column if at least one row has a valid number > 0
+            return val && !isNaN(parseFloat(val)) && parseFloat(val) > 0;
+        });
+    }).sort();
+
+    // If only one fare type exists, rename it to "Fare"
+    if (fareColumns.length === 1) {
+        const oldName = fareColumns[0];
+        const newName = "Fare";
+
+        allData.forEach(flight => {
+            if (flight.hasOwnProperty(oldName)) {
+                flight[newName] = flight[oldName];
+                delete flight[oldName];
+            }
+        });
+        fareColumns = [newName];
+    }
 }
 
 function renderTable() {
@@ -79,6 +118,16 @@ function renderTable() {
 
 function populateColSelect() {
     const sel = document.getElementById('colSelect');
+    const controlGroup = document.getElementById('colMarkupControl');
+
+    // Hide Column Markup if only 1 fare column (e.g. "Fare")
+    if (fareColumns.length <= 1) {
+        if (controlGroup) controlGroup.style.display = 'none';
+        return;
+    } else {
+        if (controlGroup) controlGroup.style.display = 'flex';
+    }
+
     sel.innerHTML = '<option value="">Select Column</option>';
     fareColumns.forEach(col => {
         const opt = document.createElement('option');
