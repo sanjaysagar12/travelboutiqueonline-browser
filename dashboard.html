@@ -10,9 +10,15 @@
 </head>
 
 <body>
-    <div class="header">
-        <h1 id="pageTitle">Flight Data Dashboard</h1>
-        <div id="routeSubtitle" class="subtitle">Waiting for data...</div>
+    <div class="header" style="display: flex; justify-content: space-between; align-items: start;">
+        <div>
+            <h1 id="pageTitle">Flight Data Dashboard</h1>
+            <div id="routeSubtitle" class="subtitle">Waiting for data...</div>
+        </div>
+        <button id="btnToggleTheme"
+            style="background-color: transparent; border: 1px solid var(--border-gray-200); color: var(--text-gray-900); box-shadow: none;">
+            Theme: <span id="currentThemeLabel">Blue</span>
+        </button>
     </div>
 
     <div class="controls">

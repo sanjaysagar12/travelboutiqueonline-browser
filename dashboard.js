@@ -3,6 +3,7 @@
 let allData = [];
 let fareColumns = [];
 const baseColumns = ["Airline", "Flight #", "DepartureTime", "Origin", "ArrivalTime", "Destination", "Duration", "Stops"];
+let currentTheme = 'blue'; // 'blue' or 'green'
 
 document.addEventListener('DOMContentLoaded', () => {
     loadData();
@@ -12,7 +13,22 @@ document.addEventListener('DOMContentLoaded', () => {
     document.getElementById('btnApplyCol').addEventListener('click', applyColMarkup);
     document.getElementById('btnCopyEmail').addEventListener('click', copyForEmail);
     document.getElementById('btnDownloadCsv').addEventListener('click', exportCSV);
+    document.getElementById('btnToggleTheme').addEventListener('click', toggleTheme);
 });
+
+function toggleTheme() {
+    currentTheme = (currentTheme === 'blue') ? 'green' : 'blue';
+    const body = document.body;
+    const label = document.getElementById('currentThemeLabel');
+
+    if (currentTheme === 'green') {
+        body.classList.add('theme-green');
+        label.textContent = 'Green';
+    } else {
+        body.classList.remove('theme-green');
+        label.textContent = 'Blue';
+    }
+}
 
 function loadData() {
     chrome.storage.local.get(['flightData'], (result) => {
@@ -274,27 +290,34 @@ function copyForEmail() {
 
     const headers = [...baseColumns, ...displayFareColumns];
 
+    // Theme colors for email
+    const themeColors = {
+        blue: { headerBg: '#eff6ff', headerText: '#1d4ed8', border: '#bfdbfe' },
+        green: { headerBg: '#ecfdf5', headerText: '#047857', border: '#bbf7d0' }
+    };
+    const colors = themeColors[currentTheme];
+
     // Create HTML string with inline styles for email compatibility
-    // Style: Clean, white background, light gray borders, distinct header
+    // Style: Clean, white background, distinct header based on theme
     let html = `
-        <table border="0" cellpadding="0" cellspacing="0" style="border-collapse: collapse; width: 100%; font-family: Arial, sans-serif; font-size: 13px; color: #333; border: 1px solid #e5e7eb;">
-            <thead style="background-color: #f9fafb;">
+        <table border="0" cellpadding="0" cellspacing="0" style="border-collapse: collapse; width: 100%; font-family: Arial, sans-serif; font-size: 13px; color: #333; border: 1px solid ${colors.border};">
+            <thead style="background-color: ${colors.headerBg};">
                 <tr>`;
 
     headers.forEach(h => {
-        html += `<th style="padding: 12px 16px; border-bottom: 2px solid #e5e7eb; text-align: left; font-weight: 600; color: #374151; text-transform: uppercase; font-size: 11px; letter-spacing: 0.05em;">${h}</th>`;
+        html += `<th style="padding: 12px 16px; border-bottom: 2px solid ${colors.border}; text-align: left; font-weight: 600; color: ${colors.headerText}; text-transform: uppercase; font-size: 11px; letter-spacing: 0.05em;">${h}</th>`;
     });
 
     html += `</tr></thead><tbody>`;
 
     allData.forEach((row, index) => {
         // Zebra striping for better readability
-        const bg = index % 2 === 0 ? '#ffffff' : '#f9fafb';
+        const bg = index % 2 === 0 ? '#ffffff' : colors.headerBg;
         html += `<tr style="background-color: ${bg};">`;
 
         headers.forEach(h => {
             let val = row[h];
-            let cellStyle = `padding: 12px 16px; border-bottom: 1px solid #e5e7eb; vertical-align: top;`;
+            let cellStyle = `padding: 12px 16px; border-bottom: 1px solid ${colors.border}; vertical-align: top;`;
 
             if (fareColumns.includes(h) && val && !isNaN(parseFloat(val))) {
                 // Price formatting
