@@ -84,6 +84,32 @@ function identifyColumns() {
             }
         });
         fareColumns = [newName];
+    } else if (fareColumns.length > 1) {
+        // If multiple fare types, create a consolidated "Fare" column
+        syncUnifiedFare();
+    }
+}
+
+function syncUnifiedFare() {
+    // Only sync if "Fare" is a consolidated column (i.e., there are other fare columns)
+    const hasOtherFares = fareColumns.some(col => col !== "Fare");
+    if (!hasOtherFares) return;
+
+    allData.forEach(flight => {
+        // Find populated source fare columns (excluding the "Fare" column itself)
+        const sourceFares = fareColumns.filter(col => col !== "Fare" && flight[col] && !isNaN(parseFloat(flight[col])) && parseFloat(flight[col]) > 0);
+
+        if (sourceFares.length > 0) {
+            // Display the value from the first available fare type
+            flight["Fare"] = flight[sourceFares[0]];
+        } else {
+            flight["Fare"] = "";
+        }
+    });
+
+    if (!fareColumns.includes("Fare")) {
+        // Add "Fare" at the beginning of the fare columns
+        fareColumns.unshift("Fare");
     }
 }
 
@@ -164,10 +190,13 @@ function applyGlobalMarkup() {
 
     allData.forEach(flight => {
         fareColumns.forEach(col => {
-            // Apply only if exists
-            flight[col] = addMarkupToPrice(flight[col], amount);
+            // Apply only if exists and it's a source column
+            if (col !== "Fare") {
+                flight[col] = addMarkupToPrice(flight[col], amount);
+            }
         });
     });
+    syncUnifiedFare();
     renderTable();
 }
 
@@ -179,8 +208,19 @@ function applyColMarkup() {
     if (isNaN(amount)) return alert("Invalid markup amount");
 
     allData.forEach(flight => {
-        flight[col] = addMarkupToPrice(flight[col], amount);
+        if (col === "Fare" && fareColumns.length > 1) {
+            // Apply to all underlying fare columns if user selects the unified "Fare"
+            fareColumns.forEach(c => {
+                if (c !== "Fare") {
+                    flight[c] = addMarkupToPrice(flight[c], amount);
+                }
+            });
+        } else {
+            flight[col] = addMarkupToPrice(flight[col], amount);
+        }
     });
+
+    syncUnifiedFare();
     renderTable();
 }
 
@@ -188,7 +228,13 @@ function applyColMarkup() {
 function exportCSV() {
     if (allData.length === 0) return alert("No data");
 
-    const headers = [...baseColumns, ...fareColumns];
+    // Filter headers: If "Fare" exists as a consolidated column, only include "Fare"
+    let exportsFareColumns = fareColumns;
+    if (fareColumns.includes("Fare") && fareColumns.length > 1) {
+        exportsFareColumns = ["Fare"];
+    }
+
+    const headers = [...baseColumns, ...exportsFareColumns];
     let csvContent = headers.join(",") + "\n";
 
     allData.forEach(row => {
@@ -220,7 +266,13 @@ function exportCSV() {
 function copyForEmail() {
     if (allData.length === 0) return alert("No data to copy");
 
-    const headers = [...baseColumns, ...fareColumns];
+    // Filter headers: If "Fare" exists as a consolidated column, only include "Fare"
+    let displayFareColumns = fareColumns;
+    if (fareColumns.includes("Fare") && fareColumns.length > 1) {
+        displayFareColumns = ["Fare"];
+    }
+
+    const headers = [...baseColumns, ...displayFareColumns];
 
     // Create HTML string with inline styles for email compatibility
     // Style: Clean, white background, light gray borders, distinct header
