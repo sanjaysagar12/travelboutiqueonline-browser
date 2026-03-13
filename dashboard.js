@@ -2,7 +2,7 @@
 
 let allData = [];
 let fareColumns = [];
-const baseColumns = ["Airline", "Flight #", "DepartureTime", "From", "ArrivalTime", "To", "Duration", "Stops"];
+const baseColumns = ["Airline", "Flight #", "Departure", "From", "Arrival", "To", "Duration", "Stops"];
 let currentTheme = 'blue'; // 'blue' or 'green'
 let cityMapping = {};
 let columnVisibility = {};
@@ -55,7 +55,7 @@ function populateDisplayDropdown() {
     const container = document.getElementById('columnChecklist');
     container.innerHTML = '';
 
-    const allHeaders = [...baseColumns, ...fareColumns];
+    const allHeaders = baseColumns;
     allHeaders.forEach(col => {
         const item = document.createElement('div');
         item.className = 'dropdown-item';
@@ -88,7 +88,7 @@ function populateDisplayDropdown() {
 }
 
 function saveColumnVisibility() {
-    const allHeaders = [...baseColumns, ...fareColumns];
+    const allHeaders = baseColumns;
     allHeaders.forEach(col => {
         const cb = document.getElementById(`vis-${col}`);
         if (cb) {
@@ -138,6 +138,16 @@ function loadData() {
                     if (flight.FlightNumber) {
                         flight['Flight #'] = flight.FlightNumber;
                         delete flight.FlightNumber;
+                    }
+                    // Rename DepartureTime -> Departure
+                    if (flight.DepartureTime) {
+                        flight.Departure = flight.DepartureTime;
+                        delete flight.DepartureTime;
+                    }
+                    // Rename ArrivalTime -> Arrival
+                    if (flight.ArrivalTime) {
+                        flight.Arrival = flight.ArrivalTime;
+                        delete flight.ArrivalTime;
                     }
                     // Stops
                     if (flight.Stops === '0 Stop') {
@@ -221,7 +231,7 @@ function identifyColumns() {
     // Initialize/Update Visibility
     [...baseColumns, ...fareColumns].forEach(col => {
         if (columnVisibility[col] === undefined) {
-            columnVisibility[col] = !(col === 'DepartureTime' || col === 'ArrivalTime');
+            columnVisibility[col] = true; // All columns checked by default
         }
     });
 }
