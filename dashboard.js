@@ -2,8 +2,10 @@
 
 let allData = [];
 let fareColumns = [];
-const baseColumns = ["Airline", "Flight #", "DepartureTime", "Origin", "ArrivalTime", "Destination", "Duration", "Stops"];
+const baseColumns = ["Airline", "Flight #", "DepartureTime", "From", "ArrivalTime", "To", "Duration", "Stops"];
 let currentTheme = 'blue'; // 'blue' or 'green'
+let cityMapping = {};
+let columnVisibility = {};
 
 document.addEventListener('DOMContentLoaded', () => {
     loadData();
@@ -14,6 +16,17 @@ document.addEventListener('DOMContentLoaded', () => {
     document.getElementById('btnCopyEmail').addEventListener('click', copyForEmail);
     document.getElementById('btnDownloadCsv').addEventListener('click', exportCSV);
     document.getElementById('btnToggleTheme').addEventListener('click', toggleTheme);
+    document.getElementById('btnToggleDisplay').addEventListener('click', toggleDisplayDropdown);
+    document.getElementById('btnSaveDisplay').addEventListener('click', saveColumnVisibility);
+
+    // Close dropdown on outside click
+    window.addEventListener('click', (e) => {
+        const dropdown = document.getElementById('displayDropdown');
+        const btn = document.getElementById('btnToggleDisplay');
+        if (!btn.contains(e.target) && !dropdown.contains(e.target)) {
+            dropdown.classList.add('hidden');
+        }
+    });
 });
 
 function toggleTheme() {
@@ -30,42 +43,142 @@ function toggleTheme() {
     }
 }
 
-function loadData() {
-    chrome.storage.local.get(['flightData'], (result) => {
-        if (result.flightData && Array.isArray(result.flightData)) {
-            // Normalize Data
-            allData = result.flightData.map(flight => {
-                // Rename FlightNumber -> Flight #
-                if (flight.FlightNumber) {
-                    flight['Flight #'] = flight.FlightNumber;
-                    delete flight.FlightNumber;
-                }
-                // Stops
-                if (flight.Stops === '0 Stop') {
-                    flight.Stops = 'No Stop';
-                }
-                // Duration
-                if (flight.Duration) {
-                    flight.Duration = flight.Duration.replace(/h/g, 'H').replace(/m/g, 'M');
-                }
-                return flight;
-            });
+function toggleDisplayDropdown() {
+    const dropdown = document.getElementById('displayDropdown');
+    dropdown.classList.toggle('hidden');
+    if (!dropdown.classList.contains('hidden')) {
+        populateDisplayDropdown();
+    }
+}
 
-            // Update Header with Route Info
-            if (allData.length > 0) {
-                const first = allData[0];
-                const origin = first.Origin || 'Origin';
-                const dest = first.Destination || 'Destination';
-                document.getElementById('pageTitle').textContent = "Flight Results";
-                document.getElementById('routeSubtitle').textContent = `${origin} ➝ ${dest} | ${allData.length} Flights Found`;
+function populateDisplayDropdown() {
+    const container = document.getElementById('columnChecklist');
+    container.innerHTML = '';
+
+    const allHeaders = [...baseColumns, ...fareColumns];
+    allHeaders.forEach(col => {
+        const item = document.createElement('div');
+        item.className = 'dropdown-item';
+
+        const cb = document.createElement('input');
+        cb.type = 'checkbox';
+        cb.id = `vis-${col}`;
+        cb.checked = !!columnVisibility[col];
+
+        const label = document.createElement('label');
+        label.htmlFor = `vis-${col}`;
+        label.textContent = col;
+        label.style.marginLeft = '8px';
+        label.style.cursor = 'pointer';
+
+        item.appendChild(cb);
+        item.appendChild(label);
+        item.style.display = 'flex';
+        item.style.alignItems = 'center';
+        item.style.padding = '8px 12px';
+
+        item.addEventListener('click', (e) => {
+            if (e.target !== cb) {
+                cb.checked = !cb.checked;
             }
+        });
 
-            identifyColumns();
-            renderTable();
-            populateColSelect();
-        } else {
-            console.warn("No flight data found in storage.");
+        container.appendChild(item);
+    });
+}
+
+function saveColumnVisibility() {
+    const allHeaders = [...baseColumns, ...fareColumns];
+    allHeaders.forEach(col => {
+        const cb = document.getElementById(`vis-${col}`);
+        if (cb) {
+            columnVisibility[col] = cb.checked;
         }
+    });
+
+    chrome.storage.local.set({ columnVisibility }, () => {
+        document.getElementById('displayDropdown').classList.add('hidden');
+        renderTable();
+    });
+}
+
+async function loadCityMapping() {
+    try {
+        const response = await fetch('cities.csv');
+        const text = await response.text();
+        const lines = text.split('\n');
+        // Skip header row
+        for (let i = 1; i < lines.length; i++) {
+            const line = lines[i].trim();
+            if (!line) continue;
+
+            // Simple split as the CSV doesn't appear to have quoted commas
+            const cols = line.split(',');
+            if (cols.length >= 3) {
+                const city = cols[1].trim();
+                const code = cols[2].trim().toUpperCase();
+                cityMapping[code] = city;
+            }
+        }
+    } catch (err) {
+        console.warn("Could not load cities.csv:", err);
+    }
+}
+
+function loadData() {
+    loadCityMapping().then(() => {
+        chrome.storage.local.get(['flightData', 'columnVisibility'], (result) => {
+            if (result.columnVisibility) {
+                columnVisibility = result.columnVisibility;
+            }
+            if (result.flightData && Array.isArray(result.flightData)) {
+                // Normalize Data
+                allData = result.flightData.map(flight => {
+                    // Rename FlightNumber -> Flight #
+                    if (flight.FlightNumber) {
+                        flight['Flight #'] = flight.FlightNumber;
+                        delete flight.FlightNumber;
+                    }
+                    // Stops
+                    if (flight.Stops === '0 Stop') {
+                        flight.Stops = 'No Stop';
+                    }
+                    // Duration
+                    if (flight.Duration) {
+                        flight.Duration = flight.Duration.replace(/h/g, 'H').replace(/m/g, 'M');
+                    }
+                    // Origin -> From, Destination -> To
+                    if (flight.Origin) {
+                        flight.From = flight.Origin;
+                        delete flight.Origin;
+                    }
+                    if (flight.Destination) {
+                        flight.To = flight.Destination;
+                        delete flight.Destination;
+                    }
+                    return flight;
+                });
+
+                // Update Header with Route Info
+                if (allData.length > 0) {
+                    const first = allData[0];
+                    const fromCode = (first.From || first.Origin || '').toUpperCase();
+                    const toCode = (first.To || first.Destination || '').toUpperCase();
+
+                    const fromName = cityMapping[fromCode] || fromCode || 'From';
+                    const toName = cityMapping[toCode] || toCode || 'To';
+
+                    document.getElementById('pageTitle').textContent = "Flight Results";
+                    document.getElementById('routeSubtitle').textContent = `${fromName} ➝ ${toName} | ${allData.length} Flights Found`;
+                }
+
+                identifyColumns();
+                renderTable();
+                populateColSelect();
+            } else {
+                console.warn("No flight data found in storage.");
+            }
+        });
     });
 }
 
@@ -104,6 +217,13 @@ function identifyColumns() {
         // If multiple fare types, create a consolidated "Fare" column
         syncUnifiedFare();
     }
+
+    // Initialize/Update Visibility
+    [...baseColumns, ...fareColumns].forEach(col => {
+        if (columnVisibility[col] === undefined) {
+            columnVisibility[col] = !(col === 'DepartureTime' || col === 'ArrivalTime');
+        }
+    });
 }
 
 function syncUnifiedFare() {
@@ -133,9 +253,13 @@ function renderTable() {
     const thead = document.getElementById('tableHead');
     const tbody = document.getElementById('tableBody');
 
+    const allHeaders = [...baseColumns, ...fareColumns];
+
     // Headers
     thead.innerHTML = '';
-    [...baseColumns, ...fareColumns].forEach(col => {
+    allHeaders.forEach(col => {
+        if (!columnVisibility[col]) return;
+
         const th = document.createElement('th');
         th.textContent = col;
         thead.appendChild(th);
@@ -145,7 +269,10 @@ function renderTable() {
     tbody.innerHTML = '';
     allData.forEach(flight => {
         const tr = document.createElement('tr');
-        [...baseColumns, ...fareColumns].forEach(col => {
+        allHeaders.forEach(col => {
+            // Only render cells for checked columns
+            if (!columnVisibility[col]) return;
+
             const td = document.createElement('td');
             const val = flight[col];
 
@@ -244,13 +371,15 @@ function applyColMarkup() {
 function exportCSV() {
     if (allData.length === 0) return alert("No data");
 
-    // Filter headers: If "Fare" exists as a consolidated column, only include "Fare"
-    let exportsFareColumns = fareColumns;
-    if (fareColumns.includes("Fare") && fareColumns.length > 1) {
-        exportsFareColumns = ["Fare"];
-    }
-
-    const headers = [...baseColumns, ...exportsFareColumns];
+    // Filter headers based on user selection
+    const headers = [...baseColumns, ...fareColumns].filter(h => {
+        if (!columnVisibility[h]) return false;
+        // Fare consolidation logic
+        if (fareColumns.includes("Fare") && fareColumns.length > 1) {
+            return h === "Fare" || !fareColumns.includes(h);
+        }
+        return true;
+    });
     let csvContent = headers.join(",") + "\n";
 
     allData.forEach(row => {
@@ -282,13 +411,15 @@ function exportCSV() {
 function copyForEmail() {
     if (allData.length === 0) return alert("No data to copy");
 
-    // Filter headers: If "Fare" exists as a consolidated column, only include "Fare"
-    let displayFareColumns = fareColumns;
-    if (fareColumns.includes("Fare") && fareColumns.length > 1) {
-        displayFareColumns = ["Fare"];
-    }
-
-    const headers = [...baseColumns, ...displayFareColumns];
+    // Filter headers based on user selection
+    const headers = [...baseColumns, ...fareColumns].filter(h => {
+        if (!columnVisibility[h]) return false;
+        // Fare consolidation logic
+        if (fareColumns.includes("Fare") && fareColumns.length > 1) {
+            return h === "Fare" || !fareColumns.includes(h);
+        }
+        return true;
+    });
 
     // Theme colors for email
     const themeColors = {

@@ -37,7 +37,21 @@
             <button id="btnApplyCol">Apply Col</button>
         </div>
 
-        <div class="control-group" style="margin-left: auto;">
+        <div class="control-group" style="margin-left: auto; position: relative;">
+            <div style="position: relative;">
+                <button id="btnToggleDisplay"
+                    style="margin-right: 10px; background-color: var(--bg-white); color: var(--text-gray-900); border: 1px solid var(--border-gray-200); box-shadow: none;">
+                    Display ▾
+                </button>
+                <div id="displayDropdown" class="dropdown-menu hidden">
+                    <div id="columnChecklist" class="dropdown-content">
+                        <!-- Checkboxes generated dynamically -->
+                    </div>
+                    <div class="dropdown-footer">
+                        <button id="btnSaveDisplay" class="success" style="width: 100%;">Save Changes</button>
+                    </div>
+                </div>
+            </div>
             <button id="btnCopyEmail" style="margin-right: 10px;">Copy for Email</button>
             <button id="btnDownloadCsv" class="success">Download CSV</button>
         </div>
