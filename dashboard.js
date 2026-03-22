@@ -2,7 +2,7 @@
 
 let allData = [];
 let fareColumns = [];
-const baseColumns = ["Airline", "Flight #", "Departure", "From", "Arrival", "To", "Duration", "Stops"];
+const baseColumns = ["Airline", "Flight #", "From", "Departure", "To", "Arrival", "Duration", "Stops"];
 let currentTheme = 'blue'; // 'blue' or 'green'
 let cityMapping = {};
 let columnVisibility = {};
