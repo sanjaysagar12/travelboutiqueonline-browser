@@ -162,7 +162,7 @@ th {
     text-align: left;
     font-weight: 600;
     color: var(--theme-header-text);
-    text-transform: uppercase;
+    text-transform: none;
     font-size: 0.75rem;
     letter-spacing: 0.05em;
     white-space: nowrap;

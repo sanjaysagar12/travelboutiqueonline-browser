@@ -8,7 +8,9 @@
     "storage",
     "downloads",
     "unlimitedStorage",
-    "offscreen"
+    "offscreen",
+    "scripting",
+    "activeTab"
   ],
   "host_permissions": [
     "https://m.travelboutiqueonline.com/*"

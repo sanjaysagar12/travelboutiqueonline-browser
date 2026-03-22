@@ -127,16 +127,16 @@ async function loadCityMapping() {
 
 function loadData() {
     loadCityMapping().then(() => {
-        chrome.storage.local.get(['flightData', 'columnVisibility'], (result) => {
+        chrome.storage.local.get(['flightData', 'columnVisibility', 'flightInfo'], (result) => {
             if (result.columnVisibility) {
                 columnVisibility = result.columnVisibility;
             }
             if (result.flightData && Array.isArray(result.flightData)) {
                 // Normalize Data
                 allData = result.flightData.map(flight => {
-                    // Rename FlightNumber -> Flight #
+                    // Rename FlightNumber -> Flight No
                     if (flight.FlightNumber) {
-                        flight['Flight #'] = flight.FlightNumber;
+                        flight['Flight No'] = flight.FlightNumber.replace(/-/g, ' ');
                         delete flight.FlightNumber;
                     }
                     // Rename DepartureTime -> Departure
@@ -151,7 +151,7 @@ function loadData() {
                     }
                     // Stops
                     if (flight.Stops === '0 Stop') {
-                        flight.Stops = 'No Stop';
+                        flight.Stops = 'Non Stop';
                     }
                     // Duration
                     if (flight.Duration) {
@@ -170,7 +170,10 @@ function loadData() {
                 });
 
                 // Update Header with Route Info
-                if (allData.length > 0) {
+                if (result.flightInfo) {
+                    document.getElementById('pageTitle').textContent = result.flightInfo.route || "Flight Results";
+                    document.getElementById('routeSubtitle').textContent = result.flightInfo.date ? `✈ ${result.flightInfo.date} | ${allData.length} Flights Found` : `${allData.length} Flights Found`;
+                } else if (allData.length > 0) {
                     const first = allData[0];
                     const fromCode = (first.From || first.Origin || '').toUpperCase();
                     const toCode = (first.To || first.Destination || '').toUpperCase();
@@ -421,71 +424,80 @@ function exportCSV() {
 function copyForEmail() {
     if (allData.length === 0) return alert("No data to copy");
 
-    // Filter headers based on user selection
-    const headers = [...baseColumns, ...fareColumns].filter(h => {
-        if (!columnVisibility[h]) return false;
-        // Fare consolidation logic
-        if (fareColumns.includes("Fare") && fareColumns.length > 1) {
-            return h === "Fare" || !fareColumns.includes(h);
-        }
-        return true;
-    });
+    chrome.storage.local.get(['flightInfo'], (result) => {
+        const info = result.flightInfo || {};
+        const route = info.route || "Flight Results";
+        const date = info.date || "";
 
-    // Theme colors for email
-    const themeColors = {
-        blue: { headerBg: '#eff6ff', headerText: '#1d4ed8', border: '#bfdbfe' },
-        green: { headerBg: '#ecfdf5', headerText: '#047857', border: '#bbf7d0' }
-    };
-    const colors = themeColors[currentTheme];
+        // Filter headers based on user selection
+        const headers = [...baseColumns, ...fareColumns].filter(h => {
+            if (!columnVisibility[h]) return false;
+            // Fare consolidation logic
+            if (fareColumns.includes("Fare") && fareColumns.length > 1) {
+                return h === "Fare" || !fareColumns.includes(h);
+            }
+            return true;
+        });
 
-    // Create HTML string with inline styles for email compatibility
-    // Style: Clean, white background, distinct header based on theme
-    let html = `
-        <table border="0" cellpadding="0" cellspacing="0" style="border-collapse: collapse; width: 100%; font-family: Arial, sans-serif; font-size: 13px; color: #333; border: 1px solid ${colors.border};">
-            <thead style="background-color: ${colors.headerBg};">
-                <tr>`;
+        // Theme colors for email
+        const themeColors = {
+            blue: { headerBg: '#eff6ff', headerText: '#1d4ed8', border: '#bfdbfe' },
+            green: { headerBg: '#ecfdf5', headerText: '#047857', border: '#bbf7d0' }
+        };
+        const colors = themeColors[currentTheme];
 
-    headers.forEach(h => {
-        html += `<th style="padding: 12px 16px; border-bottom: 2px solid ${colors.border}; text-align: left; font-weight: 600; color: ${colors.headerText}; text-transform: uppercase; font-size: 11px; letter-spacing: 0.05em;">${h}</th>`;
-    });
-
-    html += `</tr></thead><tbody>`;
-
-    allData.forEach((row, index) => {
-        // Zebra striping for better readability
-        const bg = index % 2 === 0 ? '#ffffff' : colors.headerBg;
-        html += `<tr style="background-color: ${bg};">`;
+        // Header Section
+        let html = `
+            <div style="margin-bottom: 15px; font-family: Arial, sans-serif;">
+                <h2 style="margin: 0; color: ${colors.headerText}; font-size: 18px;">${route}</h2>
+                ${date ? `<p style="margin: 4px 0 0; color: #6b7280; font-size: 13px;">✈ ${date}</p>` : ''}
+            </div>
+            <table border="0" cellpadding="0" cellspacing="0" style="border-collapse: collapse; width: 100%; font-family: Arial, sans-serif; font-size: 13px; color: #333; border: 1px solid ${colors.border};">
+                <thead style="background-color: ${colors.headerBg};">
+                    <tr>`;
 
         headers.forEach(h => {
-            let val = row[h];
-            let cellStyle = `padding: 12px 16px; border-bottom: 1px solid ${colors.border}; vertical-align: top;`;
-
-            if (fareColumns.includes(h) && val && !isNaN(parseFloat(val))) {
-                // Price formatting
-                html += `<td style="${cellStyle} text-align: right; font-family: Consolas, monospace; font-weight: 600; color: #111827;">${parseFloat(val).toFixed(2)}</td>`;
-            } else {
-                // Regular text
-                html += `<td style="${cellStyle} color: #4b5563;">${val !== undefined ? val : ''}</td>`;
-            }
+            html += `<th style="padding: 12px 16px; border-bottom: 2px solid ${colors.border}; text-align: left; font-weight: 600; color: ${colors.headerText}; text-transform: none; font-size: 11px; letter-spacing: 0.05em;">${h}</th>`;
         });
-        html += `</tr>`;
-    });
 
-    html += `</tbody></table>`;
+        html += `</tr></thead><tbody>`;
 
-    // Copy HTML to clipboard
-    const blobHtml = new Blob([html], { type: 'text/html' });
-    const blobText = new Blob([html], { type: 'text/plain' }); // Fallback
+        allData.forEach((row, index) => {
+            // Zebra striping for better readability
+            const bg = index % 2 === 0 ? '#ffffff' : colors.headerBg;
+            html += `<tr style="background-color: ${bg};">`;
 
-    const item = new ClipboardItem({
-        'text/html': blobHtml,
-        'text/plain': blobText
-    });
+            headers.forEach(h => {
+                let val = row[h];
+                let cellStyle = `padding: 12px 16px; border-bottom: 1px solid ${colors.border}; vertical-align: top;`;
 
-    navigator.clipboard.write([item]).then(() => {
-        alert("Table copied to clipboard! You can paste it into an email.");
-    }).catch(err => {
-        console.error(err);
-        alert("Failed to copy. See console.");
+                if (fareColumns.includes(h) && val && !isNaN(parseFloat(val))) {
+                    // Price formatting
+                    html += `<td style="${cellStyle} text-align: right; font-family: Consolas, monospace; font-weight: 600; color: #111827;">${parseFloat(val).toFixed(2)}</td>`;
+                } else {
+                    // Regular text
+                    html += `<td style="${cellStyle} color: #4b5563;">${val !== undefined ? val : ''}</td>`;
+                }
+            });
+            html += `</tr>`;
+        });
+
+        html += `</tbody></table>`;
+
+        // Copy HTML to clipboard
+        const blobHtml = new Blob([html], { type: 'text/html' });
+        const blobText = new Blob([html], { type: 'text/plain' }); // Fallback
+
+        const item = new ClipboardItem({
+            'text/html': blobHtml,
+            'text/plain': blobText
+        });
+
+        navigator.clipboard.write([item]).then(() => {
+            alert("Table with Route & Date copied to clipboard!");
+        }).catch(err => {
+            console.error(err);
+            alert("Failed to copy. See console.");
+        });
     });
 }
