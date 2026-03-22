@@ -134,9 +134,9 @@ function loadData() {
             if (result.flightData && Array.isArray(result.flightData)) {
                 // Normalize Data
                 allData = result.flightData.map(flight => {
-                    // Rename FlightNumber -> Flight No
+                    // Rename FlightNumber -> Flight #
                     if (flight.FlightNumber) {
-                        flight['Flight No'] = flight.FlightNumber.replace(/-/g, ' ');
+                        flight['Flight #'] = flight.FlightNumber.replace(/-/g, ' ');
                         delete flight.FlightNumber;
                     }
                     // Rename DepartureTime -> Departure
