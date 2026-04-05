@@ -4,70 +4,73 @@
 <head>
     <meta charset="UTF-8">
     <title>Flight Data Dashboard</title>
-    <meta charset="UTF-8">
-    <title>Flight Data Dashboard</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <link rel="stylesheet" href="dashboard.css">
 </head>
 
 <body>
-    <div class="header" style="display: flex; justify-content: space-between; align-items: start;">
-        <div>
-            <h1 id="pageTitle">Flight Data Dashboard</h1>
-            <div id="routeSubtitle" class="subtitle">Waiting for data...</div>
-        </div>
-        <button id="btnToggleTheme"
-            style="background-color: transparent; border: 1px solid var(--border-gray-200); color: var(--text-gray-900); box-shadow: none;">
-            Theme: <span id="currentThemeLabel">Blue</span>
-        </button>
-    </div>
-
-    <div class="controls">
-        <div class="control-group">
-            <label>Global Markup:</label>
-            <input type="number" id="globalMarkup" value="0" placeholder="0.00">
-            <button id="btnApplyGlobal">Apply All</button>
+    <div class="container">
+        <!-- Header: Centered Route and Date -->
+        <div class="header">
+            <div id="routeDisplay" class="route">
+                Loading Route...
+            </div>
+            <div class="date-divider"></div>
+            <div id="dateDisplay" class="date">
+                Loading Date...
+            </div>
         </div>
 
-        <div class="control-group" id="colMarkupControl">
-            <label>Col Markup:</label>
-            <select id="colSelect">
-                <option>Select Column</option>
-            </select>
-            <input type="number" id="colMarkup" value="0" placeholder="0.00">
-            <button id="btnApplyCol">Apply Col</button>
-        </div>
+        <!-- Controls: Markup, Themes, and Export -->
+        <div class="controls">
+            <div class="control-group">
+                <label>Markup:</label>
+                <input type="number" id="globalMarkup" value="0" placeholder="0.00" title="Global Markup">
+                <button id="btnApplyGlobal">Apply All</button>
+            </div>
 
-        <div class="control-group" style="margin-left: auto; position: relative;">
-            <div style="position: relative;">
-                <button id="btnToggleDisplay"
-                    style="margin-right: 10px; background-color: var(--bg-white); color: var(--text-gray-900); border: 1px solid var(--border-gray-200); box-shadow: none;">
-                    Display ▾
-                </button>
-                <div id="displayDropdown" class="dropdown-menu hidden">
-                    <div id="columnChecklist" class="dropdown-content">
-                        <!-- Checkboxes generated dynamically -->
-                    </div>
-                    <div class="dropdown-footer">
-                        <button id="btnSaveDisplay" class="success" style="width: 100%;">Save Changes</button>
+            <div class="control-group" id="colMarkupControl">
+                <select id="colSelect">
+                    <option>Select Column</option>
+                </select>
+                <input type="number" id="colMarkup" value="0" placeholder="0.00">
+                <button id="btnApplyCol">Apply Col</button>
+            </div>
+
+            <div class="control-group">
+                <button id="btnToggleTheme">Theme: <span id="currentThemeLabel">Blue</span></button>
+            </div>
+
+            <div class="control-group last">
+                <div style="position: relative;">
+                    <button id="btnToggleDisplay">Display ▾</button>
+                    <div id="displayDropdown" class="dropdown-menu hidden">
+                        <div id="columnChecklist" class="dropdown-content">
+                            <!-- Checkboxes generated dynamically -->
+                        </div>
+                        <div class="dropdown-footer">
+                            <button id="btnSaveDisplay" class="success" style="width: 100%;">Save Changes</button>
+                        </div>
                     </div>
                 </div>
+                <button id="btnCopyEmail" style="margin-left: 10px;">Copy for Email</button>
+                <button id="btnDownloadCsv" class="success" style="margin-left: 10px;">Download CSV</button>
             </div>
-            <button id="btnCopyEmail" style="margin-right: 10px;">Copy for Email</button>
-            <button id="btnDownloadCsv" class="success">Download CSV</button>
         </div>
-    </div>
 
-    <div class="table-container">
-        <table id="dataTable">
-            <thead>
-                <tr id="tableHead">
-                    <!-- Headers generated dynamically -->
-                </tr>
-            </thead>
-            <tbody id="tableBody">
-                <!-- Data rows -->
-            </tbody>
-        </table>
+        <!-- Table: Spaced Row Layout -->
+        <div class="table-container">
+            <table id="dataTable">
+                <thead>
+                    <tr id="tableHead">
+                        <!-- Headers generated dynamically -->
+                    </tr>
+                </thead>
+                <tbody id="tableBody">
+                    <!-- Data rows generated dynamically -->
+                </tbody>
+            </table>
+        </div>
     </div>
 
     <script src="dashboard.js"></script>

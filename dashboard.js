@@ -170,9 +170,18 @@ function loadData() {
                 });
 
                 // Update Header with Route Info
+                const routeEl = document.getElementById('routeDisplay');
+                const dateEl = document.getElementById('dateDisplay');
+
                 if (result.flightInfo) {
-                    document.getElementById('pageTitle').textContent = result.flightInfo.route || "Flight Results";
-                    document.getElementById('routeSubtitle').textContent = result.flightInfo.date ? `✈ ${result.flightInfo.date} | ${allData.length} Flights Found` : `${allData.length} Flights Found`;
+                    let routeHtml = result.flightInfo.route || "Flight Results";
+                    // Format: Origin <span>✈</span> Destination
+                    if (routeHtml.toLowerCase().includes(" to ")) {
+                        const parts = routeHtml.split(/ to /i);
+                        routeHtml = `${parts[0]} <span>✈</span> ${parts[1]}`;
+                    }
+                    routeEl.innerHTML = routeHtml;
+                    dateEl.textContent = result.flightInfo.date || "";
                 } else if (allData.length > 0) {
                     const first = allData[0];
                     const fromCode = (first.From || first.Origin || '').toUpperCase();
@@ -181,8 +190,8 @@ function loadData() {
                     const fromName = cityMapping[fromCode] || fromCode || 'From';
                     const toName = cityMapping[toCode] || toCode || 'To';
 
-                    document.getElementById('pageTitle').textContent = "Flight Results";
-                    document.getElementById('routeSubtitle').textContent = `${fromName} ➝ ${toName} | ${allData.length} Flights Found`;
+                    routeEl.innerHTML = `${fromName} <span>✈</span> ${toName}`;
+                    dateEl.textContent = ""; // Keep it clean if no specific date is extracted
                 }
 
                 identifyColumns();
@@ -193,6 +202,28 @@ function loadData() {
             }
         });
     });
+}
+
+function getAirlineClass(airlineName) {
+    if (!airlineName) return 'brand-default';
+    const name = airlineName.toLowerCase();
+    if (name.includes('indigo')) return 'brand-indigo';
+    if (name.includes('air india')) return 'brand-airindia';
+    if (name.includes('spicejet')) return 'brand-spicejet';
+    if (name.includes('vistara')) return 'brand-vistara';
+    if (name.includes('akasa')) return 'brand-akasa';
+    return 'brand-default';
+}
+
+function getAirlineColor(airlineName) {
+    if (!airlineName) return '#94a3b8';
+    const name = airlineName.toLowerCase();
+    if (name.includes('indigo')) return '#1a3c8d';
+    if (name.includes('air india')) return '#e21d26';
+    if (name.includes('spicejet')) return '#f30000';
+    if (name.includes('vistara')) return '#5d2547';
+    if (name.includes('akasa')) return '#ff5000';
+    return '#94a3b8';
 }
 
 function identifyColumns() {
@@ -275,6 +306,8 @@ function renderTable() {
 
         const th = document.createElement('th');
         th.textContent = col;
+        // Keep airline left for better UI
+        if (col === "Airline") th.style.textAlign = 'left';
         thead.appendChild(th);
     });
 
@@ -282,6 +315,8 @@ function renderTable() {
     tbody.innerHTML = '';
     allData.forEach(flight => {
         const tr = document.createElement('tr');
+        tr.className = 'flight-row';
+
         allHeaders.forEach(col => {
             // Only render cells for checked columns
             if (!columnVisibility[col]) return;
@@ -289,7 +324,10 @@ function renderTable() {
             const td = document.createElement('td');
             const val = flight[col];
 
-            if (fareColumns.includes(col)) {
+            if (col === "Airline") {
+                td.textContent = val !== undefined ? val : '';
+                td.style.textAlign = 'left';
+            } else if (fareColumns.includes(col)) {
                 // Formatting for price columns
                 if (val && !isNaN(parseFloat(val))) {
                     td.textContent = parseFloat(val).toFixed(2);
@@ -420,13 +458,16 @@ function exportCSV() {
 }
 
 // --- Copy for Email ---
-// --- Copy for Email ---
 function copyForEmail() {
     if (allData.length === 0) return alert("No data to copy");
 
     chrome.storage.local.get(['flightInfo'], (result) => {
         const info = result.flightInfo || {};
-        const route = info.route || "Flight Results";
+        let routeHtml = info.route || "Flight Results";
+        if (routeHtml.toLowerCase().includes(" to ")) {
+            const parts = routeHtml.split(/ to /i);
+            routeHtml = `${parts[0]} <span style="color: #9ca3af; margin: 0 10px;">✈</span> ${parts[1]}`;
+        }
         const date = info.date || "";
 
         // Filter headers based on user selection
@@ -441,52 +482,85 @@ function copyForEmail() {
 
         // Theme colors for email
         const themeColors = {
-            blue: { headerBg: '#eff6ff', headerText: '#1d4ed8', border: '#bfdbfe' },
-            green: { headerBg: '#ecfdf5', headerText: '#047857', border: '#bbf7d0' }
+            blue: { headerBg: '#f8fafc', headerText: '#1a3c8d', border: '#e5e7eb' },
+            green: { headerBg: '#f0fdf4', headerText: '#047857', border: '#d1d5db' }
         };
         const colors = themeColors[currentTheme];
 
-        // Header Section
+        // Robust email structure (Nested tables for centering and spacing)
         let html = `
-            <div style="margin-bottom: 15px; font-family: Arial, sans-serif;">
-                <h2 style="margin: 0; color: ${colors.headerText}; font-size: 18px;">${route}</h2>
-                ${date ? `<p style="margin: 4px 0 0; color: #6b7280; font-size: 13px;">✈ ${date}</p>` : ''}
-            </div>
-            <table border="0" cellpadding="0" cellspacing="0" style="border-collapse: collapse; width: 100%; font-family: Arial, sans-serif; font-size: 13px; color: #333; border: 1px solid ${colors.border};">
-                <thead style="background-color: ${colors.headerBg};">
-                    <tr>`;
+            <div style="background-color: #f0f2f5; padding: 40px 20px; font-family: 'Segoe UI', Tahoma, Verdana, sans-serif;">
+                <table border="0" cellpadding="0" cellspacing="0" width="100%" style="max-width: 900px; margin: 0 auto; background-color: white; border-radius: 12px; border: 1px solid #e5e7eb; padding: 24px;">
+                    <tr>
+                        <td>
+                            <!-- Header Section -->
+                            <table border="0" cellpadding="0" cellspacing="0" width="100%" style="border-bottom: 1px solid #e5e7eb; padding-bottom: 24px; margin-bottom: 20px;">
+                                <tr>
+                                    <td align="center">
+                                        <span style="font-size: 20px; font-weight: 600; color: ${colors.headerText};">${routeHtml}</span>
+                                        <span style="height: 24px; width: 1px; background: #d1d5db; margin: 0 24px; display: inline-block; vertical-align: middle;"></span>
+                                        <span style="color: #4b5563; font-weight: 500; font-size: 16px; vertical-align: middle;">${date}</span>
+                                    </td>
+                                </tr>
+                            </table>
+
+                            <!-- Table Header -->
+                            <table border="0" cellpadding="0" cellspacing="0" width="100%">
+                                <thead>
+                                    <tr>`;
 
         headers.forEach(h => {
-            html += `<th style="padding: 12px 16px; border-bottom: 2px solid ${colors.border}; text-align: left; font-weight: 600; color: ${colors.headerText}; text-transform: none; font-size: 11px; letter-spacing: 0.05em;">${h}</th>`;
+            let align = (h === "Airline") ? "left" : "center";
+            html += `<th style="padding: 0 16px; text-align: ${align}; font-weight: 700; color: #000; font-size: 12px;">${h}</th>`;
         });
 
-        html += `</tr></thead><tbody>`;
+        html += `           </tr>
+                                </thead>
+                                <tbody>`;
 
-        allData.forEach((row, index) => {
-            // Zebra striping for better readability
-            const bg = index % 2 === 0 ? '#ffffff' : colors.headerBg;
-            html += `<tr style="background-color: ${bg};">`;
+        // Flight Rows (Each as a separate nested table for the card-spacing effect)
+        allData.forEach((row) => {
+            html += `<tr><td colspan="${headers.length}" style="padding-top: 12px;">
+                        <table border="0" cellpadding="0" cellspacing="0" width="100%" style="border-radius: 8px; border: 1px solid #e5e7eb; background-color: white;">
+                            <tr class="flight-row">`;
 
-            headers.forEach(h => {
+            headers.forEach((h, i) => {
                 let val = row[h];
-                let cellStyle = `padding: 12px 16px; border-bottom: 1px solid ${colors.border}; vertical-align: top;`;
+                let isFirst = (i === 0);
+                let isLast = (i === headers.length - 1);
+                
+                let cellStyle = `
+                    padding: 16px; 
+                    text-align: center;
+                    font-size: 14px;
+                    color: #000;
+                    ${isFirst ? 'text-align: left;' : ''}
+                `;
 
-                if (fareColumns.includes(h) && val && !isNaN(parseFloat(val))) {
-                    // Price formatting
-                    html += `<td style="${cellStyle} text-align: right; font-family: Consolas, monospace; font-weight: 600; color: #111827;">${parseFloat(val).toFixed(2)}</td>`;
+                if (h === "Airline") {
+                    html += `<td style="${cellStyle}">${val !== undefined ? val : ''}</td>`;
+                } else if (fareColumns.includes(h) && val && !isNaN(parseFloat(val))) {
+                    html += `<td style="${cellStyle} font-weight: 700;">${parseFloat(val).toFixed(2)}</td>`;
                 } else {
-                    // Regular text
-                    html += `<td style="${cellStyle} color: #4b5563;">${val !== undefined ? val : ''}</td>`;
+                    html += `<td style="${cellStyle}">${val !== undefined ? val : ''}</td>`;
                 }
             });
-            html += `</tr>`;
+
+            html += `       </tr>
+                        </table>
+                    </td></tr>`;
         });
 
-        html += `</tbody></table>`;
+        html += `           </tbody>
+                            </table>
+                        </td>
+                    </tr>
+                </table>
+            </div>`;
 
         // Copy HTML to clipboard
         const blobHtml = new Blob([html], { type: 'text/html' });
-        const blobText = new Blob([html], { type: 'text/plain' }); // Fallback
+        const blobText = new Blob([html], { type: 'text/plain' });
 
         const item = new ClipboardItem({
             'text/html': blobHtml,
@@ -494,7 +568,7 @@ function copyForEmail() {
         });
 
         navigator.clipboard.write([item]).then(() => {
-            alert("Table with Route & Date copied to clipboard!");
+            alert("Modern Dashboard UI copied to clipboard!");
         }).catch(err => {
             console.error(err);
             alert("Failed to copy. See console.");

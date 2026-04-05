@@ -1,0 +1,233 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Flight Search UI - Center Aligned</title>
+    <style>
+        :root {
+            --primary-blue: #1a3c8d;
+            --border-color: #e5e7eb;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background-color: #f0f2f5;
+            display: flex;
+            justify-content: center;
+            padding: 40px;
+        }
+
+        .container {
+            background: white;
+            border-radius: 12px;
+            box-shadow: 0 4px 20px rgba(0,0,0,0.08);
+            width: 900px;
+            padding: 24px;
+        }
+
+        .header {
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            padding-bottom: 24px;
+            border-bottom: 1px solid var(--border-color);
+            margin-bottom: 20px;
+        }
+
+        .route {
+            font-size: 1.25rem;
+            font-weight: 600;
+            color: var(--primary-blue);
+        }
+
+        .route span {
+            margin: 0 10px;
+            color: #9ca3af;
+        }
+
+        .date-divider {
+            height: 24px;
+            width: 1px;
+            background: #d1d5db;
+            margin: 0 24px;
+        }
+
+        .date {
+            color: #4b5563;
+            font-weight: 500;
+        }
+
+        table {
+            width: 100%;
+            border-collapse: separate;
+            border-spacing: 0 12px;
+        }
+
+        /* Updated to Center Align */
+        th {
+            color: #000000;
+            font-size: 0.85rem;
+            text-transform: none;
+            letter-spacing: normal;
+            padding: 0 16px;
+            text-align: center; /* Center aligned */
+            font-weight: 700;
+        }
+
+        .flight-row td {
+            padding: 16px;
+            border-top: 1px solid var(--border-color);
+            border-bottom: 1px solid var(--border-color);
+            font-size: 0.95rem;
+            background: white;
+            color: #000000;
+            font-weight: 400;
+            text-align: center; /* Center aligned */
+        }
+
+        .flight-row td:first-child {
+            border-left: 1px solid var(--border-color);
+            border-top-left-radius: 8px;
+            border-bottom-left-radius: 8px;
+            text-align: left; /* Keep airline left for better UI */
+        }
+
+        .flight-row td:last-child {
+            border-right: 1px solid var(--border-color);
+            border-top-right-radius: 8px;
+            border-bottom-right-radius: 8px;
+        }
+
+        .airline-cell {
+            display: flex;
+            align-items: center;
+            justify-content: flex-start;
+        }
+
+        .logo-box {
+            width: 24px;
+            height: 24px;
+            border-radius: 4px;
+            margin-right: 12px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: white;
+            font-size: 14px;
+        }
+
+        .indigo { background-color: #1a3c8d; }
+        .airindia { background-color: #e21d26; }
+        
+    </style>
+</head>
+<body>
+
+<div class="container">
+    <div class="header">
+        <div class="route">Chennai <span>✈</span> Mumbai</div>
+        <div class="date-divider"></div>
+        <div class="date">10th April 2026</div>
+    </div>
+
+    <table>
+        <thead>
+            <tr>
+                <th style="text-align: left;">Airline</th>
+                <th>Flight #</th>
+                <th>Departure</th>
+                <th>Arrival</th>
+                <th>Duration</th>
+                <th>Stops</th>
+                <th>Fare (INR)</th>
+            </tr>
+        </thead>
+        <tbody>
+            <tr class="flight-row">
+                <td><div class="airline-cell"><div class="logo-box indigo">✈</div>Indigo</div></td>
+                <td>6E 937</td>
+                <td>06:30</td>
+                <td>09:25</td>
+                <td>02H 55M</td>
+                <td>Non Stop</td>
+                <td>8046</td>
+            </tr>
+            <tr class="flight-row">
+                <td><div class="airline-cell"><div class="logo-box airindia">✈</div>Air India</div></td>
+                <td>AI 2832</td>
+                <td>06:55</td>
+                <td>09:55</td>
+                <td>03H 00M</td>
+                <td>Non Stop</td>
+                <td>9378</td>
+            </tr>
+            <tr class="flight-row">
+                <td><div class="airline-cell"><div class="logo-box airindia">✈</div>Air India</div></td>
+                <td>AI 2886</td>
+                <td>08:05</td>
+                <td>11:05</td>
+                <td>03H 00M</td>
+                <td>Non Stop</td>
+                <td>8490</td>
+            </tr>
+            <tr class="flight-row">
+                <td><div class="airline-cell"><div class="logo-box indigo">✈</div>Indigo</div></td>
+                <td>6E 404</td>
+                <td>09:15</td>
+                <td>12:10</td>
+                <td>02H 55M</td>
+                <td>Non Stop</td>
+                <td>8046</td>
+            </tr>
+            <tr class="flight-row">
+                <td><div class="airline-cell"><div class="logo-box indigo">✈</div>Indigo</div></td>
+                <td>6E 615</td>
+                <td>10:30</td>
+                <td>13:25</td>
+                <td>02H 55M</td>
+                <td>Non Stop</td>
+                <td>8046</td>
+            </tr>
+            <tr class="flight-row">
+                <td><div class="airline-cell"><div class="logo-box airindia">✈</div>Air India</div></td>
+                <td>AI 2901</td>
+                <td>11:45</td>
+                <td>14:45</td>
+                <td>03H 00M</td>
+                <td>Non Stop</td>
+                <td>9378</td>
+            </tr>
+            <tr class="flight-row">
+                <td><div class="airline-cell"><div class="logo-box indigo">✈</div>Indigo</div></td>
+                <td>6E 212</td>
+                <td>13:00</td>
+                <td>15:55</td>
+                <td>02H 55M</td>
+                <td>Non Stop</td>
+                <td>8046</td>
+            </tr>
+            <tr class="flight-row">
+                <td><div class="airline-cell"><div class="logo-box airindia">✈</div>Air India</div></td>
+                <td>AI 2944</td>
+                <td>15:20</td>
+                <td>18:20</td>
+                <td>03H 00M</td>
+                <td>Non Stop</td>
+                <td>8490</td>
+            </tr>
+            <tr class="flight-row">
+                <td><div class="airline-cell"><div class="logo-box indigo">✈</div>Indigo</div></td>
+                <td>6E 889</td>
+                <td>17:45</td>
+                <td>20:40</td>
+                <td>02H 55M</td>
+                <td>Non Stop</td>
+                <td>8046</td>
+            </tr>
+        </tbody>
+    </table>
+</div>
+
+</body>
+</html>

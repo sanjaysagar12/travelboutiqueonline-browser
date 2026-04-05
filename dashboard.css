@@ -1,124 +1,129 @@
-/* Dashboard Modern UI (Tailwind-inspired) */
+/* Dashboard Modern UI (Inspired by example) */
 :root {
-    --bg-gray-50: #f9fafb;
+    --bg-gray-50: #f0f2f5;
     --bg-white: #ffffff;
-    --text-gray-900: #111827;
-    --text-gray-500: #6b7280;
-    --primary-blue: #3b82f6;
-    --primary-blue-hover: #2563eb;
+    --text-primary: #000000;
+    --text-muted: #6b7280;
+    --border-color: #e5e7eb;
+    
+    --primary-blue: #1a3c8d;
+    --primary-blue-hover: #152e6d;
+    
     --success-green: #10b981;
     --success-green-hover: #059669;
-    --border-gray-200: #e5e7eb;
-    --shadow-sm: 0 1px 2px 0 rgba(0, 0, 0, 0.05);
-    --shadow-md: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
 
-    /* Theme defaults (Blue) */
+    --shadow-sm: 0 1px 2px 0 rgba(0, 0, 0, 0.05);
+    --shadow-lg: 0 4px 20px rgba(0,0,0,0.08);
+
+    /* Theme tokens */
     --theme-primary: var(--primary-blue);
     --theme-primary-hover: var(--primary-blue-hover);
-    --theme-header-bg: #eff6ff;
-    --theme-header-text: #1d4ed8;
-    --theme-border: #bfdbfe;
-    --theme-hover: #f0f9ff;
+    --theme-header-text: var(--primary-blue);
+    --theme-divider: #d1d5db;
 }
 
 .theme-green {
     --theme-primary: var(--success-green);
     --theme-primary-hover: var(--success-green-hover);
-    --theme-header-bg: #ecfdf5;
     --theme-header-text: #047857;
-    --theme-border: #bbf7d0;
-    --theme-hover: #f0fdf4;
 }
 
 body {
-    font-family: 'Inter', system-ui, -apple-system, sans-serif;
+    font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
     background-color: var(--bg-gray-50);
-    color: var(--text-gray-900);
-    padding: 2rem;
+    color: var(--text-primary);
     margin: 0;
+    padding: 20px;
 }
 
-.header {
-    margin-bottom: 1.5rem;
-}
-
-h1 {
-    font-size: 1.5rem;
-    font-weight: 700;
-    color: var(--text-gray-900);
-    margin: 0;
-}
-
-.subtitle {
-    font-size: 0.875rem;
-    color: var(--text-gray-500);
-    margin-top: 0.25rem;
-}
-
-/* Card Style for Controls */
-.controls {
+.container {
     background: var(--bg-white);
-    padding: 1.25rem;
-    border-radius: 0.5rem;
-    box-shadow: var(--shadow-sm);
-    border: 1px solid var(--border-gray-200);
-    margin-bottom: 1.5rem;
+    border-radius: 12px;
+    box-shadow: var(--shadow-lg);
+    width: fit-content;
+    min-width: 900px;
+    margin: 20px auto;
+    padding: 24px;
+}
+
+/* Header Refinement */
+.header {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    padding-bottom: 24px;
+    border-bottom: 1px solid var(--border-color);
+    margin-bottom: 20px;
+}
+
+.route {
+    font-size: 1.25rem;
+    font-weight: 600;
+    color: var(--theme-header-text);
+}
+
+.route span {
+    margin: 0 10px;
+    color: #9ca3af;
+}
+
+.date-divider {
+    height: 24px;
+    width: 1px;
+    background: var(--theme-divider);
+    margin: 0 24px;
+}
+
+.date {
+    color: #4b5563;
+    font-weight: 500;
+}
+
+/* Controls - Keeping them professional but subtle */
+.controls {
     display: flex;
     gap: 1.5rem;
     align-items: center;
     flex-wrap: wrap;
+    margin-bottom: 20px;
+    padding: 10px 0;
 }
 
 .control-group {
     display: flex;
     align-items: center;
     gap: 0.75rem;
-    padding-right: 1.5rem;
-    border-right: 1px solid var(--border-gray-200);
 }
 
 .control-group:last-child {
-    border-right: none;
-    padding-right: 0;
     margin-left: auto;
+    position: relative;
 }
 
 label {
-    font-size: 0.875rem;
-    font-weight: 500;
-    color: var(--text-gray-900);
+    font-size: 0.85rem;
+    font-weight: 600;
 }
 
-/* Inputs & Selects */
-input[type="number"],
-select {
-    padding: 0.5rem 0.75rem;
-    border: 1px solid var(--border-gray-200);
-    border-radius: 0.375rem;
-    font-size: 0.875rem;
+input[type="number"], select {
+    padding: 0.4rem 0.6rem;
+    border: 1px solid var(--border-color);
+    border-radius: 4px;
+    font-size: 0.85rem;
     outline: none;
-    transition: border-color 0.15s;
-    width: 100px;
+    width: 90px;
 }
 
-input[type="number"]:focus,
-select:focus {
-    border-color: var(--theme-primary);
-    box-shadow: 0 0 0 2px rgba(59, 130, 246, 0.1);
-}
-
-/* Buttons */
 button {
     background-color: var(--theme-primary);
     color: white;
-    font-weight: 500;
-    font-size: 0.875rem;
+    font-weight: 600;
+    font-size: 0.85rem;
     padding: 0.5rem 1rem;
-    border-radius: 0.375rem;
+    border-radius: 4px;
     border: none;
     cursor: pointer;
-    transition: background-color 0.15s, transform 0.1s;
-    box-shadow: var(--shadow-sm);
+    transition: background-color 0.15s;
 }
 
 button:hover {
@@ -129,69 +134,127 @@ button.success {
     background-color: var(--success-green);
 }
 
-button.success:hover {
-    background-color: var(--success-green-hover);
+#btnToggleTheme {
+    background: transparent;
+    border: 1px solid var(--border-color);
+    color: var(--text-muted);
+    font-weight: normal;
 }
 
-button:active {
-    transform: translateY(1px);
-}
-
+/* Table Card-Row Style */
 .table-container {
-    background: var(--bg-white);
-    border-radius: 0.5rem;
-    box-shadow: var(--shadow-md);
-    border: 1px solid var(--theme-border);
-    overflow: hidden;
-    /* For rounded corners */
+    width: 100%;
 }
 
 table {
-    width: 100%;
-    border-collapse: collapse;
-    font-size: 0.875rem;
-}
-
-thead {
-    background-color: var(--theme-header-bg);
-    border-bottom: 1px solid var(--theme-border);
+    width: max-content;
+    min-width: 100%;
+    border-collapse: separate;
+    border-spacing: 0 12px; /* Key for the spaced row effect */
 }
 
 th {
-    padding: 0.75rem 1.5rem;
-    text-align: left;
-    font-weight: 600;
-    color: var(--theme-header-text);
+    color: #000000;
+    font-size: 0.85rem;
+    padding: 0 16px;
+    text-align: center;
+    font-weight: 700;
     text-transform: none;
-    font-size: 0.75rem;
-    letter-spacing: 0.05em;
-    white-space: nowrap;
+}
+
+th:first-child {
+    text-align: left;
+}
+
+.flight-row td {
+    padding: 16px;
+    border-top: 1px solid var(--border-color);
+    border-bottom: 1px solid var(--border-color);
+    font-size: 0.95rem;
+    background: white;
+    color: #000000;
+    font-weight: 400;
+    text-align: center;
+    transition: box-shadow 0.2s;
+}
+
+.flight-row:hover td {
+    box-shadow: inset 0 0 0 1px var(--theme-primary);
+}
+
+.flight-row td:first-child {
+    border-left: 1px solid var(--border-color);
+    border-top-left-radius: 8px;
+    border-bottom-left-radius: 8px;
+    text-align: left;
+}
+
+.flight-row td:last-child {
+    border-right: 1px solid var(--border-color);
+    border-top-right-radius: 8px;
+    border-bottom-right-radius: 8px;
+}
+
+/* Airline Cell with Logo Box */
+.airline-cell {
+    display: flex;
+    align-items: center;
+    justify-content: flex-start;
+}
+
+.logo-box {
+    width: 24px;
+    height: 24px;
+    border-radius: 4px;
+    margin-right: 12px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: white;
+    font-size: 12px;
+}
+
+/* Dynamic colors for common airlines */
+.brand-indigo { background-color: #1a3c8d; }
+.brand-airindia { background-color: #e21d26; }
+.brand-spicejet { background-color: #f30000; }
+.brand-vistara { background-color: #5d2547; }
+.brand-akasa { background-color: #ff5000; }
+.brand-default { background-color: #94a3b8; }
+
+/* Price Formatting */
+.price-val {
+    font-family: 'Segoe UI', sans-serif;
+    font-weight: 700;
 }
 
 /* Dropdown Menu */
 .dropdown-menu {
     position: absolute;
     top: calc(100% + 5px);
-    left: 0;
-    background: var(--bg-white);
-    border: 1px solid var(--border-gray-200);
-    border-radius: 0.5rem;
-    box-shadow: var(--shadow-md);
+    right: 0;
+    background: white;
+    border: 1px solid var(--border-color);
+    border-radius: 8px;
+    box-shadow: 0 4px 12px rgba(0,0,0,0.1);
     z-index: 1000;
-    min-width: 200px;
-    max-height: 400px;
+    min-width: 180px;
+    max-height: 300px;
     display: flex;
     flex-direction: column;
 }
 
 .dropdown-content {
     overflow-y: auto;
-    padding: 0.5rem 0;
+    padding: 8px 0;
 }
 
 .dropdown-item {
-    transition: background-color 0.15s;
+    display: flex;
+    align-items: center;
+    padding: 8px 16px;
     cursor: pointer;
+    font-size: 0.85rem;
 }
 
 .dropdown-item:hover {
@@ -199,40 +262,10 @@ th {
 }
 
 .dropdown-footer {
-    padding: 1rem;
-    border-top: 1px solid var(--border-gray-200);
-    background-color: var(--bg-gray-50);
-    border-radius: 0 0 0.5rem 0.5rem;
+    padding: 8px 12px;
+    border-top: 1px solid var(--border-color);
 }
 
-td {
-    padding: 1rem 1.5rem;
-    border-bottom: 1px solid var(--theme-border);
-    color: var(--text-gray-900);
-}
-
-tr:last-child td {
-    border-bottom: none;
-}
-
-tr:hover {
-    background-color: var(--theme-hover);
-}
-
-/* Data Specifics */
-.price-val {
-    font-family: 'Consolas', monospace;
-    /* Monospace for alignment */
-    font-weight: 600;
-    color: var(--text-gray-900);
-}
-
-.empty-price {
-    color: var(--border-gray-200);
-    font-style: italic;
-}
-
-/* Utilities */
 .hidden {
     display: none !important;
 }
