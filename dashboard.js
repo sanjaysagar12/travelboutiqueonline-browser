@@ -6,6 +6,7 @@ const baseColumns = ["Airline", "Flight #", "From", "Departure", "To", "Arrival"
 let currentTheme = 'blue'; // 'blue' or 'green'
 let cityMapping = {};
 let columnVisibility = {};
+let showFlightIcons = true;
 
 document.addEventListener('DOMContentLoaded', () => {
     loadData();
@@ -18,6 +19,7 @@ document.addEventListener('DOMContentLoaded', () => {
     document.getElementById('btnToggleTheme').addEventListener('click', toggleTheme);
     document.getElementById('btnToggleDisplay').addEventListener('click', toggleDisplayDropdown);
     document.getElementById('btnSaveDisplay').addEventListener('click', saveColumnVisibility);
+    document.getElementById('chkShowIcons').addEventListener('change', toggleIcons);
 
     // Close dropdown on outside click
     window.addEventListener('click', (e) => {
@@ -41,6 +43,11 @@ function toggleTheme() {
         body.classList.remove('theme-green');
         label.textContent = 'Blue';
     }
+}
+
+function toggleIcons(e) {
+    showFlightIcons = e.target.checked;
+    renderTable();
 }
 
 function toggleDisplayDropdown() {
@@ -325,12 +332,21 @@ function renderTable() {
             const val = flight[col];
 
             if (col === "Airline") {
-                td.textContent = val !== undefined ? val : '';
-                td.style.textAlign = 'left';
+                if (showFlightIcons) {
+                    const brandClass = getAirlineClass(val);
+                    td.innerHTML = `
+                        <div class="airline-cell">
+                            <div class="logo-box ${brandClass}">✈</div>
+                            ${val !== undefined ? val : ''}
+                        </div>
+                    `;
+                } else {
+                    td.textContent = val !== undefined ? val : '';
+                }
             } else if (fareColumns.includes(col)) {
                 // Formatting for price columns
                 if (val && !isNaN(parseFloat(val))) {
-                    td.textContent = parseFloat(val).toFixed(2);
+                    td.textContent = Math.round(parseFloat(val)).toString();
                     td.className = 'price-val';
                 } else {
                     td.textContent = '-';
@@ -436,6 +452,10 @@ function exportCSV() {
     allData.forEach(row => {
         const rowData = headers.map(header => {
             let val = row[header] || "";
+            // Round fares for CSV
+            if (fareColumns.includes(header) && val && !isNaN(parseFloat(val))) {
+                val = Math.round(parseFloat(val)).toString();
+            }
             // Excel CSV escaping
             if (typeof val === 'string' && (val.includes(',') || val.includes('"'))) {
                 val = `"${val.replace(/"/g, '""')}"`;
@@ -498,7 +518,7 @@ function copyForEmail() {
                                 <tr>
                                     <td align="center">
                                         <span style="font-size: 20px; font-weight: 600; color: ${colors.headerText};">${routeHtml}</span>
-                                        <span style="height: 24px; width: 1px; background: #d1d5db; margin: 0 24px; display: inline-block; vertical-align: middle;"></span>
+                                        <span style="color: #d1d5db; margin: 0 24px; font-size: 18px; vertical-align: middle;">|</span>
                                         <span style="color: #4b5563; font-weight: 500; font-size: 16px; vertical-align: middle;">${date}</span>
                                     </td>
                                 </tr>
@@ -511,7 +531,7 @@ function copyForEmail() {
 
         headers.forEach(h => {
             let align = (h === "Airline") ? "left" : "center";
-            html += `<th style="padding: 0 16px; text-align: ${align}; font-weight: 700; color: #000; font-size: 12px;">${h}</th>`;
+            html += `<th style="padding: 0 16px; text-align: ${align}; font-weight: 700; color: #000; font-size: 14px;">${h}</th>`;
         });
 
         html += `           </tr>
@@ -538,9 +558,22 @@ function copyForEmail() {
                 `;
 
                 if (h === "Airline") {
-                    html += `<td style="${cellStyle}">${val !== undefined ? val : ''}</td>`;
+                    if (showFlightIcons) {
+                        const brandColor = getAirlineColor(val);
+                        html += `
+                            <td style="${cellStyle}">
+                                <table border="0" cellpadding="0" cellspacing="0">
+                                    <tr>
+                                        <td width="24" height="24" style="background-color: ${brandColor}; border-radius: 4px; text-align: center; color: white; font-size: 12px; line-height: 24px;">✈</td>
+                                        <td style="padding-left: 12px; font-weight: 400; color: #000;">${val !== undefined ? val : ''}</td>
+                                    </tr>
+                                </table>
+                            </td>`;
+                    } else {
+                        html += `<td style="${cellStyle}">${val !== undefined ? val : ''}</td>`;
+                    }
                 } else if (fareColumns.includes(h) && val && !isNaN(parseFloat(val))) {
-                    html += `<td style="${cellStyle} font-weight: 700;">${parseFloat(val).toFixed(2)}</td>`;
+                    html += `<td style="${cellStyle}">${Math.round(parseFloat(val))}</td>`;
                 } else {
                     html += `<td style="${cellStyle}">${val !== undefined ? val : ''}</td>`;
                 }

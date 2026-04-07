@@ -155,7 +155,7 @@ table {
 
 th {
     color: #000000;
-    font-size: 0.85rem;
+    font-size: 1.1rem;
     padding: 0 16px;
     text-align: center;
     font-weight: 700;
@@ -225,7 +225,7 @@ th:first-child {
 /* Price Formatting */
 .price-val {
     font-family: 'Segoe UI', sans-serif;
-    font-weight: 700;
+    font-weight: 400;
 }
 
 /* Dropdown Menu */
