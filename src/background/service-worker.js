@@ -5,10 +5,12 @@
 // come from that captured body - nothing here is hard-coded), then replay
 // it page-by-page via pagination.js until the server reports no more pages.
 
-import { API_CONFIG } from './api-config.js';
-import { runPaginatedSearch } from './pagination.js';
-import { AuthError, ApiStatusError, MalformedResponseError } from './response-parser.js';
-import { debugLog, debugError } from './debug-log.js';
+import { API_CONFIG } from '../api/api-config.js';
+import { runPaginatedSearch } from '../api/pagination.js';
+import { AuthError, ApiStatusError, MalformedResponseError } from '../api/response-parser.js';
+import { debugLog, debugError } from '../common/debug-log.js';
+
+const DASHBOARD_URL = 'src/ui/dashboard/dashboard.html';
 
 let state = {
   isScraping: false,
@@ -84,7 +86,7 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
     chrome.storage.local.set({ status: 'idle', flightData: [] });
     sendResponse({ success: true });
   } else if (request.action === 'OPEN_DASHBOARD') {
-    chrome.tabs.create({ url: 'dashboard.html' });
+    chrome.tabs.create({ url: DASHBOARD_URL });
   }
 });
 
@@ -101,13 +103,24 @@ function sendStatusForPopup(sendResponse) {
 }
 
 // --- Request Interception ---
-// Reads the JSON body of the search request the page's own JS sends. This
-// is the only source of tokenId/tokenMemberId/tokenAgencyId/agencyId and
-// the user's search parameters - none of it is invented here.
+// Keeps listening for the entire lifetime of the service worker - not just
+// until the first capture. Every POST the page itself sends to the search
+// endpoint (a brand-new search, a filter change, a sort change, ...)
+// overwrites state.capturedRequest with that exact payload, so Start
+// always replicates whatever the user last did on the real site: filters
+// (filterCriteriaOB), sort (sortBy/sortOrder), cabin class, pax counts,
+// and the tokenId/tokenMemberId/tokenAgencyId/agencyId for their session -
+// none of it is invented here.
 chrome.webRequest.onBeforeRequest.addListener(
   (details) => {
-    if (state.isScraping) return;
     if (details.method !== 'POST') return;
+
+    // Our own pagination replay (src/api/request-builder.js) hits this
+    // same endpoint. Those requests aren't tied to a browser tab and are
+    // initiated from the extension's own origin - ignore them so we never
+    // re-capture (and loop on) our own traffic.
+    if (details.tabId === -1) return;
+    if (details.initiator && details.initiator.startsWith('chrome-extension://')) return;
 
     let bodyObj = null;
     try {
@@ -129,12 +142,22 @@ chrome.webRequest.onBeforeRequest.addListener(
       body: bodyObj
     };
 
-    chrome.storage.local.set({ status: 'ready', lastCaptureTime: Date.now() });
+    // Don't clobber a status the popup is actively showing progress for;
+    // still record the capture so the next Start uses this latest payload.
+    if (state.isScraping) {
+      chrome.storage.local.set({ lastCaptureTime: Date.now() });
+    } else {
+      chrome.storage.local.set({ status: 'ready', lastCaptureTime: Date.now() });
+    }
 
     debugLog('Captured search request', {
+      whileScraping: state.isScraping,
       hasTokenId: Boolean(bodyObj.tokenId),
       hasTokenMemberId: Boolean(bodyObj.tokenMemberId),
       hasTokenAgencyId: Boolean(bodyObj.tokenAgencyId),
+      hasTraceId: Boolean(bodyObj.traceId),
+      hasFilters: Boolean(bodyObj.filterCriteriaOB),
+      sortBy: bodyObj.sortBy,
       segments: Array.isArray(bodyObj.segments) ? bodyObj.segments.length : 0
     });
   },
@@ -162,7 +185,7 @@ async function startPaginationLoop() {
 
     debugLog('Pagination loop finished', { pagesFetched, totalFlights: allFlights.length });
     await chrome.storage.local.set({ status: 'finished', flightData: allFlights, flightInfo, lastError: null });
-    chrome.tabs.create({ url: 'dashboard.html' });
+    chrome.tabs.create({ url: DASHBOARD_URL });
   } catch (err) {
     const message = describeError(err);
     debugError('Pagination loop failed', err);

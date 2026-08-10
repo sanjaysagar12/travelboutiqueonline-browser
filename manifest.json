@@ -17,14 +17,14 @@
     "https://flights.tbo.in/*"
   ],
   "background": {
-    "service_worker": "service_worker.js",
+    "service_worker": "src/background/service-worker.js",
     "type": "module"
   },
   "action": {
-    "default_popup": "popup.html",
+    "default_popup": "src/ui/popup/popup.html",
     "default_title": "TBO Interceptor"
   },
   "icons": {
-    "16": "icon16.png"
+    "16": "assets/icons/icon16.png"
   }
 }

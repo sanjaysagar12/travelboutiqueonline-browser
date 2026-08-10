@@ -6,20 +6,34 @@
 import { API_CONFIG } from './api-config.js';
 import { buildPageRequestBody, fetchSearchPage } from './request-builder.js';
 import { parseSearchResponse } from './response-parser.js';
-import { mapResultToFlights, deriveFlightInfo } from './field-mapper.js';
-import { debugLog } from './debug-log.js';
+import { mapResultToFlights, deriveFlightInfo } from '../parser/field-mapper.js';
+import { debugLog } from '../common/debug-log.js';
 
 // onPage(ctx) is called after each successful page with:
 //   { pageNumber, newFlights, allFlights, flightInfo, pagination }
 // isStopRequested() lets the caller cooperatively cancel mid-loop.
+//
+// baseBody is whatever was last captured from the live page. It may be a
+// brand-new search (no traceId - filters/sort are applied fresh) or a
+// filter/sort refinement of an already-open result set (carries its own
+// traceId, filterCriteriaOB, sortBy/sortOrder). Either way it is replicated
+// as-is: we only ever seed our loop state from it and let
+// buildPageRequestBody() clone it verbatim for every page.
 export async function runPaginatedSearch(baseBody, { onPage, isStopRequested }) {
   const allFlights = [];
   const seenIds = new Set();
 
-  let traceId = null;
-  let requestedPageNumber = 1;
+  let traceId = baseBody.traceId || null;
+  let requestedPageNumber = baseBody.pageNumber > 0 ? baseBody.pageNumber : 1;
   let flightInfo = null;
   let pagesFetched = 0;
+
+  debugLog('Replicating captured request', {
+    startingPage: requestedPageNumber,
+    hasTraceId: Boolean(traceId),
+    hasFilters: Boolean(baseBody.filterCriteriaOB),
+    sortBy: baseBody.sortBy
+  });
 
   while (pagesFetched < API_CONFIG.MAX_PAGES) {
     if (isStopRequested && isStopRequested()) {
@@ -34,8 +48,8 @@ export async function runPaginatedSearch(baseBody, { onPage, isStopRequested }) 
       hasTraceId: Boolean(traceId)
     });
 
-    const { httpStatus, json } = await fetchSearchPage(body);
-    const parsed = parseSearchResponse(httpStatus, json);
+    const { httpStatus, json, rawText } = await fetchSearchPage(body);
+    const parsed = parseSearchResponse(httpStatus, json, rawText);
     pagesFetched++;
 
     if (!traceId) {

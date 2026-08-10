@@ -2,9 +2,11 @@ document.addEventListener('DOMContentLoaded', () => {
   const startBtn = document.getElementById('startBtn');
   const stopBtn = document.getElementById('stopBtn');
   const clearBtn = document.getElementById('clearBtn');
+  const statusDot = document.getElementById('statusDot');
   const statusText = document.getElementById('statusText');
   const pageCount = document.getElementById('pageCount');
   const lastTime = document.getElementById('lastTime');
+  const startLabel = startBtn.querySelector('.btn-label');
 
   // Initial Poll
   pollStatus();
@@ -90,7 +92,8 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     // Styling
-    statusText.className = 'status-indicator status-' + status.toLowerCase();
+    const statusClass = 'status-' + status.toLowerCase();
+    statusDot.className = 'status-dot ' + statusClass;
 
     // Button Logic
     // Idle: Start disabled (waiting for capture)
@@ -100,23 +103,27 @@ document.addEventListener('DOMContentLoaded', () => {
 
     if (status === 'idle') {
       startBtn.disabled = true;
-      startBtn.textContent = 'Wait for Request...';
+      startLabel.textContent = 'Start';
+      startBtn.title = 'Waiting for a search request to be captured';
       stopBtn.disabled = true;
     } else if (status === 'ready') {
       startBtn.disabled = false;
-      startBtn.textContent = 'Start Scraping';
+      startLabel.textContent = 'Start';
+      startBtn.title = 'Start scraping';
       stopBtn.disabled = true;
     } else if (status === 'scraping') {
       startBtn.disabled = true;
-      startBtn.textContent = 'Scraping...';
+      startLabel.textContent = 'Start';
       stopBtn.disabled = false;
     } else if (status === 'finished') {
       startBtn.disabled = false;
-      startBtn.textContent = 'Restart Scraping';
+      startLabel.textContent = 'Restart';
+      startBtn.title = 'Restart scraping';
       stopBtn.disabled = true;
     } else if (status === 'error') {
       startBtn.disabled = false;
-      startBtn.textContent = 'Retry Scraping';
+      startLabel.textContent = 'Retry';
+      startBtn.title = 'Retry scraping';
       stopBtn.disabled = true;
     }
   }

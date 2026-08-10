@@ -111,7 +111,7 @@ function saveColumnVisibility() {
 
 async function loadCityMapping() {
     try {
-        const response = await fetch('cities.csv');
+        const response = await fetch(chrome.runtime.getURL('assets/data/cities.csv'));
         const text = await response.text();
         const lines = text.split('\n');
         // Skip header row

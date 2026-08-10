@@ -1,6 +1,6 @@
-// Isolated field mapping: new flights-api JSON -> the extension's existing
-// internal flight model (previously produced by the HTML DOM parser in
-// offscreen.js). dashboard.js already knows how to rename/consume this
+// Isolated field mapping (parser layer): new flights-api JSON -> the
+// extension's existing internal flight model (previously produced by an
+// HTML DOM parser). dashboard.js already knows how to rename/consume this
 // shape (FlightNumber, DepartureTime, Origin, ArrivalTime, Destination,
 // Duration, Stops, plus one dynamic key per fare tier), so we keep it
 // identical rather than inventing a new schema.

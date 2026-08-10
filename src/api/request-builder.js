@@ -36,12 +36,17 @@ export async function fetchSearchPage(body) {
     body: JSON.stringify(body)
   });
 
+  // Read as text first (not .json()) so a non-2xx response with a
+  // non-JSON or empty body still gives response-parser.js something to
+  // surface in the error message, instead of silently discarding it.
+  let rawText = null;
   let json = null;
   try {
-    json = await response.json();
+    rawText = await response.text();
+    json = rawText ? JSON.parse(rawText) : null;
   } catch (e) {
     json = null;
   }
 
-  return { httpStatus: response.status, json };
+  return { httpStatus: response.status, json, rawText };
 }
