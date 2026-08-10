@@ -1,22 +1,24 @@
 {
   "manifest_version": 3,
   "name": "TBO Flight Search Interceptor",
-  "version": "1.1",
-  "description": "Intercepts FlightReturnSearchAjax flight search requests and paginates through results automatic.",
+  "version": "2.0",
+  "description": "Captures flights-api.tbo.in flight search requests and paginates through all results automatically.",
   "permissions": [
     "webRequest",
     "storage",
     "downloads",
     "unlimitedStorage",
-    "offscreen",
     "scripting",
-    "activeTab"
+    "activeTab",
+    "declarativeNetRequest"
   ],
   "host_permissions": [
-    "https://m.travelboutiqueonline.com/*"
+    "https://flights-api.tbo.in/*",
+    "https://flights.tbo.in/*"
   ],
   "background": {
-    "service_worker": "service_worker.js"
+    "service_worker": "service_worker.js",
+    "type": "module"
   },
   "action": {
     "default_popup": "popup.html",

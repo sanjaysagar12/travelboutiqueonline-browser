@@ -1,205 +1,190 @@
 // TBO Flight Search Interceptor - Service Worker
+//
+// Flow: capture the live flights-api.tbo.in search request the page itself
+// issues (cookies/tokenId/tokenMemberId/tokenAgencyId/agencyId/segments all
+// come from that captured body - nothing here is hard-coded), then replay
+// it page-by-page via pagination.js until the server reports no more pages.
+
+import { API_CONFIG } from './api-config.js';
+import { runPaginatedSearch } from './pagination.js';
+import { AuthError, ApiStatusError, MalformedResponseError } from './response-parser.js';
+import { debugLog, debugError } from './debug-log.js';
 
 let state = {
-    isListening: true,
-    isScraping: false,
-    capturedRequest: null,
-    currentPage: 0,
-    stopRequested: false,
-    scrapedData: [] // Store parsed objects here
+  isScraping: false,
+  capturedRequest: null, // { url, method, body }
+  stopRequested: false
 };
 
-// --- Offscreen Management ---
-async function setupOffscreenDocument(path) {
-    // Check if offscreen document exists
-    const existingContexts = await chrome.runtime.getContexts({
-        contextTypes: ['OFFSCREEN_DOCUMENT'],
-        documentUrls: [path]
+// --- declarativeNetRequest: force Origin/Referer to match the real site ---
+// fetch() from a service worker cannot set these (forbidden headers) and
+// would otherwise send the extension's own chrome-extension:// origin.
+const ORIGIN_HEADER_RULE_ID = 1001;
+
+async function ensureOriginHeaderRule() {
+  if (!chrome.declarativeNetRequest) return;
+  try {
+    await chrome.declarativeNetRequest.updateSessionRules({
+      removeRuleIds: [ORIGIN_HEADER_RULE_ID],
+      addRules: [{
+        id: ORIGIN_HEADER_RULE_ID,
+        priority: 1,
+        condition: {
+          urlFilter: API_CONFIG.MATCH_URL_FILTER,
+          resourceTypes: ['xmlhttprequest']
+        },
+        action: {
+          type: 'modifyHeaders',
+          requestHeaders: [
+            { header: 'Origin', operation: 'set', value: API_CONFIG.ORIGIN_HEADER_VALUE },
+            { header: 'Referer', operation: 'set', value: API_CONFIG.REFERER_HEADER_VALUE }
+          ]
+        }
+      }]
     });
-
-    if (existingContexts.length > 0) {
-        return;
-    }
-
-    // Create offscreen document
-    if (chrome.offscreen) {
-        await chrome.offscreen.createDocument({
-            url: path,
-            reasons: ['DOM_PARSER'],
-            justification: 'Parse flight HTML results',
-        });
-    } else {
-        console.warn("chrome.offscreen API not available (Requires MV3 & Chrome 109+)");
-    }
+  } catch (err) {
+    debugError('Failed to install header rule', err);
+  }
 }
 
-// Ensure offscreen is ready when we start
-setupOffscreenDocument('offscreen.html');
+ensureOriginHeaderRule();
 
 // --- Messaging ---
 chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
-    if (request.action === 'GET_STATUS') {
-        sendStatusForPopup(sendResponse);
-        return true;
+  if (request.action === 'GET_STATUS') {
+    sendStatusForPopup(sendResponse);
+    return true;
+  }
+
+  if (request.action === 'START_SCRAPE') {
+    if (!state.capturedRequest) {
+      sendResponse({ success: false, error: 'No request captured yet.' });
+      return;
+    }
+    if (state.isScraping) {
+      sendResponse({ success: false, error: 'Already scraping.' });
+      return;
     }
 
-    if (request.action === 'START_SCRAPE') {
-        if (!state.capturedRequest) {
-            sendResponse({ success: false, error: "No request captured yet." });
-            return;
-        }
-        state.isScraping = true;
-        state.stopRequested = false;
-        state.scrapedData = []; // Clear previous run
-        chrome.storage.local.set({ status: 'scraping', pagesDownloaded: 0, flightData: [] });
+    state.isScraping = true;
+    state.stopRequested = false;
+    chrome.storage.local.set({ status: 'scraping', pagesDownloaded: 0, flightData: [], lastError: null });
 
-        startPaginationLoop();
-        sendResponse({ success: true });
-    } else if (request.action === 'STOP_SCRAPE') {
-        state.isScraping = false;
-        state.stopRequested = true;
-        console.log('Stop requested.');
-        sendResponse({ success: true });
-    } else if (request.action === 'CLEAR_DATA') {
-        chrome.storage.local.clear();
-        state.capturedRequest = null;
-        state.isScraping = false;
-        state.isListening = true;
-        state.currentPage = 0;
-        state.scrapedData = [];
-        chrome.storage.local.set({ status: 'idle', flightData: [] });
-        sendResponse({ success: true });
-    } else if (request.action === 'OPEN_DASHBOARD') {
-        chrome.tabs.create({ url: 'dashboard.html' });
-    }
+    startPaginationLoop();
+    sendResponse({ success: true });
+  } else if (request.action === 'STOP_SCRAPE') {
+    state.stopRequested = true;
+    debugLog('Stop requested', {});
+    sendResponse({ success: true });
+  } else if (request.action === 'CLEAR_DATA') {
+    chrome.storage.local.clear();
+    state.capturedRequest = null;
+    state.isScraping = false;
+    state.stopRequested = false;
+    chrome.storage.local.set({ status: 'idle', flightData: [] });
+    sendResponse({ success: true });
+  } else if (request.action === 'OPEN_DASHBOARD') {
+    chrome.tabs.create({ url: 'dashboard.html' });
+  }
 });
 
 function sendStatusForPopup(sendResponse) {
-    chrome.storage.local.get(['status', 'pagesDownloaded', 'lastCaptureTime'], (result) => {
-        sendResponse({
-            status: result.status || 'idle',
-            pagesDownloaded: result.pagesDownloaded || 0,
-            lastCaptureTime: result.lastCaptureTime,
-            capturedUrl: state.capturedRequest ? state.capturedRequest.url : null
-        });
+  chrome.storage.local.get(['status', 'pagesDownloaded', 'lastCaptureTime', 'lastError'], (result) => {
+    sendResponse({
+      status: result.status || 'idle',
+      pagesDownloaded: result.pagesDownloaded || 0,
+      lastCaptureTime: result.lastCaptureTime,
+      lastError: result.lastError || null,
+      capturedUrl: state.capturedRequest ? state.capturedRequest.url : null
     });
+  });
 }
 
 // --- Request Interception ---
+// Reads the JSON body of the search request the page's own JS sends. This
+// is the only source of tokenId/tokenMemberId/tokenAgencyId/agencyId and
+// the user's search parameters - none of it is invented here.
 chrome.webRequest.onBeforeRequest.addListener(
-    (details) => {
-        if (state.isScraping) return;
+  (details) => {
+    if (state.isScraping) return;
+    if (details.method !== 'POST') return;
 
-        if (details.url.includes('FlightReturnSearchAjax.aspx')) {
-            console.log('Intercepted target request:', details.url);
-            state.capturedRequest = {
-                url: details.url,
-                method: details.method,
-            };
-
-            chrome.storage.local.set({
-                status: 'ready',
-                lastCaptureTime: Date.now()
-            });
-        }
-    },
-    {
-        urls: [
-            "https://m.travelboutiqueonline.com/FlightReturnSearchAjax.aspx*",
-            "https://m.travelboutiqueonline.com/*/FlightReturnSearchAjax.aspx*"
-        ]
+    let bodyObj = null;
+    try {
+      const raw = details.requestBody && details.requestBody.raw;
+      if (raw && raw[0] && raw[0].bytes) {
+        const text = new TextDecoder('utf-8').decode(raw[0].bytes);
+        bodyObj = JSON.parse(text);
+      }
+    } catch (err) {
+      debugError('Failed to decode captured request body', err);
+      return;
     }
+
+    if (!bodyObj || typeof bodyObj !== 'object') return;
+
+    state.capturedRequest = {
+      url: details.url,
+      method: details.method,
+      body: bodyObj
+    };
+
+    chrome.storage.local.set({ status: 'ready', lastCaptureTime: Date.now() });
+
+    debugLog('Captured search request', {
+      hasTokenId: Boolean(bodyObj.tokenId),
+      hasTokenMemberId: Boolean(bodyObj.tokenMemberId),
+      hasTokenAgencyId: Boolean(bodyObj.tokenAgencyId),
+      segments: Array.isArray(bodyObj.segments) ? bodyObj.segments.length : 0
+    });
+  },
+  { urls: API_CONFIG.MATCH_PATTERNS },
+  ['requestBody']
 );
 
-// --- Loop ---
+// --- Pagination Loop ---
 async function startPaginationLoop() {
-    console.log('Starting pagination loop...');
-    state.currentPage = 0;
+  debugLog('Starting pagination loop', {});
+  await ensureOriginHeaderRule();
 
-    while (!state.stopRequested) {
-        try {
-            console.log(`Fetching page ${state.currentPage}...`);
+  try {
+    const { allFlights, flightInfo, pagesFetched } = await runPaginatedSearch(state.capturedRequest.body, {
+      isStopRequested: () => state.stopRequested,
+      onPage: async ({ pageNumber, allFlights, flightInfo }) => {
+        await chrome.storage.local.set({
+          pagesDownloaded: pageNumber,
+          lastCaptureTime: Date.now(),
+          flightData: allFlights,
+          flightInfo: flightInfo || undefined
+        });
+      }
+    });
 
-            const success = await fetchAndParsePage(state.currentPage);
-
-            if (!success) {
-                console.log('Pagination stopped (no results or error).');
-                break;
-            }
-
-            // Update UI state
-            chrome.storage.local.set({
-                pagesDownloaded: state.currentPage + 1,
-                lastCaptureTime: Date.now(),
-                flightData: state.scrapedData // Update storage incrementally
-            });
-
-            state.currentPage++;
-            await new Promise(r => setTimeout(r, 2000));
-
-        } catch (err) {
-            console.error('Error in pagination loop:', err);
-            break;
-        }
-    }
-
+    debugLog('Pagination loop finished', { pagesFetched, totalFlights: allFlights.length });
+    await chrome.storage.local.set({ status: 'finished', flightData: allFlights, flightInfo, lastError: null });
+    chrome.tabs.create({ url: 'dashboard.html' });
+  } catch (err) {
+    const message = describeError(err);
+    debugError('Pagination loop failed', err);
+    await chrome.storage.local.set({ status: 'error', lastError: message });
+  } finally {
     state.isScraping = false;
     state.stopRequested = false;
-    chrome.storage.local.set({ status: 'finished' });
-    console.log('Scraping session finished.');
-
-    // Open Dashboard automatically on finish?
-    chrome.tabs.create({ url: 'dashboard.html' });
+  }
 }
 
-async function fetchAndParsePage(pageNumber) {
-    if (!state.capturedRequest) return false;
-
-    let fetchUrl;
-    try {
-        const urlObj = new URL(state.capturedRequest.url);
-        urlObj.searchParams.set('pageNumber', pageNumber);
-        fetchUrl = urlObj.toString();
-    } catch (e) {
-        console.error("Failed to parse URL:", e);
-        return false;
-    }
-
-    try {
-        const response = await fetch(fetchUrl, {
-            method: state.capturedRequest.method,
-        });
-
-        if (!response.ok) {
-            console.error("Fetch failed:", response.status);
-            return false;
-        }
-
-        const html = await response.text();
-
-        if (!html || html.length < 100) {
-            return false;
-        }
-
-        // --- PARSE VIA OFFSCREEN ---
-        // If chrome.offscreen is missing (e.g. older chrome), we fail gracefully or try regex? 
-        // Assuming MV3 environment.
-        const parsedData = await chrome.runtime.sendMessage({
-            action: 'PARSE_HTML',
-            htmlChunk: html
-        });
-
-        if (parsedData && parsedData.length > 0) {
-            state.scrapedData.push(...parsedData);
-            return true;
-        } else {
-            // If parsing return 0 flights, maybe it's an end page or just empty results
-            // We can treat it as end of pagination if standard behavior
-            return false;
-        }
-
-    } catch (err) {
-        console.error("Fetch error:", err);
-        return false;
-    }
+function describeError(err) {
+  if (err instanceof AuthError) {
+    return `Session expired or not logged in: ${err.message}`;
+  }
+  if (err instanceof ApiStatusError) {
+    return `Search failed: ${err.message}`;
+  }
+  if (err instanceof MalformedResponseError) {
+    return `Unexpected response from TBO: ${err.message}`;
+  }
+  if (err && err.message) {
+    return err.message;
+  }
+  return 'Unknown error during scraping.';
 }

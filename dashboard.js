@@ -400,8 +400,9 @@ function applyGlobalMarkup() {
 
     allData.forEach(flight => {
         fareColumns.forEach(col => {
-            // Apply only if exists and it's a source column
-            if (col !== "Fare") {
+            // Only skip "Fare" if it's a consolidated column (not the source)
+            const isConsolidatedFare = (col === "Fare" && fareColumns.length > 1);
+            if (!isConsolidatedFare) {
                 flight[col] = addMarkupToPrice(flight[col], amount);
             }
         });
@@ -548,7 +549,7 @@ function copyForEmail() {
                 let val = row[h];
                 let isFirst = (i === 0);
                 let isLast = (i === headers.length - 1);
-                
+
                 let cellStyle = `
                     padding: 16px; 
                     text-align: center;

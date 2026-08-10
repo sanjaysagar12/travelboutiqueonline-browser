@@ -36,6 +36,7 @@
             margin-bottom: 5px;
             display: block;
             font-size: 14px;
+            word-break: break-word;
         }
 
         .status-idle {
@@ -52,6 +53,10 @@
 
         .status-finished {
             color: #2980b9;
+        }
+
+        .status-error {
+            color: #c0392b;
         }
 
         .stats {
@@ -161,7 +166,7 @@
     </div>
 
     <div class="footer">
-        Target: FlightReturnSearchAjax.aspx
+        Target: flights-api.tbo.in/api/v1/flights/search
     </div>
 
     <script src="popup.js"></script>

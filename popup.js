@@ -13,10 +13,6 @@ document.addEventListener('DOMContentLoaded', () => {
   setInterval(pollStatus, 1000);
 
   startBtn.addEventListener('click', async () => {
-    // 1. Extract Route/Date
-    await extractFlightInfo();
-    
-    // 2. Start Search
     chrome.runtime.sendMessage({ action: 'START_SCRAPE' }, (res) => {
       if (res && !res.success) {
         alert(res.error || "Cannot start.");
@@ -71,32 +67,6 @@ document.addEventListener('DOMContentLoaded', () => {
     }
   }
 
-  async function extractFlightInfo() {
-    try {
-      const [tab] = await chrome.tabs.query({ active: true, currentWindow: true });
-      if (!tab) return;
-
-      const results = await chrome.scripting.executeScript({
-        target: { tabId: tab.id },
-        func: () => {
-          const routeEl = document.querySelector('.modal_title .font-16.fw-600');
-          const dateEl = document.querySelector('.modal_title .fs-12.fw-500');
-          return {
-            route: routeEl ? routeEl.textContent.trim() : null,
-            date: dateEl ? dateEl.textContent.trim().replace(/^\|\s*/, '') : null
-          };
-        }
-      });
-
-      if (results && results[0] && results[0].result) {
-        const info = results[0].result;
-        chrome.storage.local.set({ flightInfo: info });
-      }
-    } catch (err) {
-      console.error("Failed to extract info:", err);
-    }
-  }
-
   function pollStatus() {
     chrome.runtime.sendMessage({ action: 'GET_STATUS' }, (state) => {
       if (chrome.runtime.lastError || !state) return;
@@ -109,7 +79,7 @@ document.addEventListener('DOMContentLoaded', () => {
     const count = state.pagesDownloaded;
     const time = state.lastCaptureTime;
 
-    statusText.textContent = getStatusLabel(status);
+    statusText.textContent = getStatusLabel(status, state.lastError);
     pageCount.textContent = count;
 
     if (time) {
@@ -126,7 +96,7 @@ document.addEventListener('DOMContentLoaded', () => {
     // Idle: Start disabled (waiting for capture)
     // Ready: Start enabled (captured, ready to scrape)
     // Scraping: Start disabled, Stop enabled
-    // Finished: Start enabled (to restart?), Stop disabled
+    // Finished/Error: Start enabled (to restart), Stop disabled
 
     if (status === 'idle') {
       startBtn.disabled = true;
@@ -144,15 +114,20 @@ document.addEventListener('DOMContentLoaded', () => {
       startBtn.disabled = false;
       startBtn.textContent = 'Restart Scraping';
       stopBtn.disabled = true;
+    } else if (status === 'error') {
+      startBtn.disabled = false;
+      startBtn.textContent = 'Retry Scraping';
+      stopBtn.disabled = true;
     }
   }
 
-  function getStatusLabel(status) {
+  function getStatusLabel(status, lastError) {
     switch (status) {
       case 'idle': return 'Waiting for Traffic...';
       case 'ready': return 'Request Captured!';
       case 'scraping': return 'Scraping...';
       case 'finished': return 'Finished';
+      case 'error': return lastError ? `Error: ${lastError}` : 'Error';
       default: return status;
     }
   }
