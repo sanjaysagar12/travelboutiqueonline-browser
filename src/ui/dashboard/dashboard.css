@@ -20,6 +20,16 @@
     --theme-primary-hover: var(--primary-blue-hover);
     --theme-header-text: var(--primary-blue);
     --theme-divider: #d1d5db;
+
+    /* Design panel tokens - overridden inline by dashboard.js, these are
+       just the defaults matching the pre-Design-panel look. */
+    --dz-density: 1;
+    --dz-header-size: 1.25rem;
+    --dz-header-weight: 600;
+    --dz-colhead-size: 0.85rem;
+    --dz-colhead-weight: 700;
+    --dz-coldata-size: 0.82rem;
+    --dz-coldata-weight: 400;
 }
 
 .theme-green {
@@ -57,8 +67,8 @@ body {
 }
 
 .route {
-    font-size: 1.25rem;
-    font-weight: 600;
+    font-size: var(--dz-header-size);
+    font-weight: var(--dz-header-weight);
     color: var(--theme-header-text);
 }
 
@@ -79,20 +89,23 @@ body {
     font-weight: 500;
 }
 
-/* Controls - Keeping them professional but subtle */
+/* Controls - a compact, professional toolbar */
 .controls {
     display: flex;
-    gap: 1.5rem;
+    gap: 0.85rem;
     align-items: center;
     flex-wrap: wrap;
-    margin-bottom: 20px;
-    padding: 10px 0;
+    margin-bottom: 18px;
+    padding: 10px 12px;
+    background: var(--bg-gray-50);
+    border: 1px solid var(--border-color);
+    border-radius: 10px;
 }
 
 .control-group {
     display: flex;
     align-items: center;
-    gap: 0.75rem;
+    gap: 0.5rem;
 }
 
 .control-group:last-child {
@@ -100,45 +113,181 @@ body {
     position: relative;
 }
 
-label {
-    font-size: 0.85rem;
+.control-divider {
+    width: 1px;
+    align-self: stretch;
+    background: var(--border-color);
+}
+
+.control-icon {
+    display: inline-flex;
+    color: var(--theme-primary);
+    opacity: 0.8;
+}
+
+.control-icon svg {
+    width: 15px;
+    height: 15px;
+}
+
+.control-label-text {
+    font-size: 0.8rem;
     font-weight: 600;
+    color: var(--text-muted);
 }
 
-input[type="number"], select {
-    padding: 0.4rem 0.6rem;
+label {
+    font-size: 0.8rem;
+    font-weight: 600;
+    color: var(--text-muted);
+}
+
+input[type="number"] {
+    padding: 0.35rem 0.55rem;
     border: 1px solid var(--border-color);
-    border-radius: 4px;
-    font-size: 0.85rem;
+    border-radius: 6px;
+    font-size: 0.8rem;
     outline: none;
-    width: 90px;
+    width: 80px;
+    background: white;
+    color: var(--text-primary);
+    transition: border-color 0.15s;
 }
 
-button {
+input[type="number"]:focus {
+    border-color: var(--theme-primary);
+}
+
+/* Base button */
+.btn, button {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.4rem;
     background-color: var(--theme-primary);
     color: white;
     font-weight: 600;
-    font-size: 0.85rem;
-    padding: 0.5rem 1rem;
-    border-radius: 4px;
+    font-size: 0.8rem;
+    padding: 0.45rem 0.85rem;
+    border-radius: 6px;
     border: none;
     cursor: pointer;
-    transition: background-color 0.15s;
+    transition: background-color 0.15s, border-color 0.15s, color 0.15s, transform 0.1s;
+    white-space: nowrap;
 }
 
-button:hover {
+.btn:hover, button:hover {
     background-color: var(--theme-primary-hover);
 }
 
-button.success {
+.btn:active, button:active {
+    transform: scale(0.97);
+}
+
+.btn-sm {
+    font-size: 0.78rem;
+    padding: 0.4rem 0.7rem;
+}
+
+.btn-svg {
+    width: 14px;
+    height: 14px;
+    flex-shrink: 0;
+}
+
+.btn-select {
+    justify-content: space-between;
+    min-width: 140px;
+    font-weight: 500;
+}
+
+.btn-select[aria-expanded="true"] .btn-caret {
+    transform: rotate(180deg);
+}
+
+.btn-outline, #btnToggleTheme {
+    background: white;
+    border: 1px solid var(--border-color);
+    color: var(--text-primary);
+    font-weight: 600;
+}
+
+.btn-outline:hover, #btnToggleTheme:hover {
+    background: var(--bg-gray-50);
+    border-color: var(--theme-primary);
+    color: var(--theme-primary);
+}
+
+.btn.success, button.success {
     background-color: var(--success-green);
 }
 
-#btnToggleTheme {
-    background: transparent;
-    border: 1px solid var(--border-color);
-    color: var(--text-muted);
-    font-weight: normal;
+.btn.success:hover, button.success:hover {
+    background-color: var(--success-green-hover);
+}
+
+.theme-swatch {
+    display: inline-block;
+    width: 10px;
+    height: 10px;
+    border-radius: 50%;
+    background: var(--theme-primary);
+    flex-shrink: 0;
+}
+
+.btn-caret {
+    transition: transform 0.15s;
+}
+
+#btnToggleDisplay[aria-expanded="true"] .btn-caret {
+    transform: rotate(180deg);
+}
+
+/* Toggle switch (replaces the plain checkbox for "Show Icons") */
+.switch {
+    position: relative;
+    display: inline-flex;
+    align-items: center;
+    cursor: pointer;
+}
+
+.switch input {
+    position: absolute;
+    opacity: 0;
+    width: 1px;
+    height: 1px;
+}
+
+.switch-track {
+    width: 32px;
+    height: 18px;
+    border-radius: 999px;
+    background: #cbd5e1;
+    display: inline-flex;
+    align-items: center;
+    padding: 2px;
+    transition: background-color 0.15s;
+}
+
+.switch-thumb {
+    width: 14px;
+    height: 14px;
+    border-radius: 50%;
+    background: white;
+    box-shadow: 0 1px 2px rgba(0,0,0,0.25);
+    transition: transform 0.15s;
+}
+
+.switch input:checked + .switch-track {
+    background: var(--theme-primary);
+}
+
+.switch input:checked + .switch-track .switch-thumb {
+    transform: translateX(14px);
+}
+
+.switch input:focus-visible + .switch-track {
+    outline: 2px solid var(--theme-primary);
+    outline-offset: 2px;
 }
 
 /* Table Card-Row Style */
@@ -150,15 +299,15 @@ table {
     width: max-content;
     min-width: 100%;
     border-collapse: separate;
-    border-spacing: 0 12px; /* Key for the spaced row effect */
+    border-spacing: 0 6px; /* Compact spaced-row effect */
 }
 
 th {
     color: #000000;
-    font-size: 1.1rem;
-    padding: 0 16px;
+    font-size: var(--dz-colhead-size);
+    padding: 0 calc(12px * var(--dz-density)) calc(4px * var(--dz-density));
     text-align: center;
-    font-weight: 700;
+    font-weight: var(--dz-colhead-weight);
     text-transform: none;
 }
 
@@ -167,14 +316,15 @@ th:first-child {
 }
 
 .flight-row td {
-    padding: 16px;
+    padding: calc(8px * var(--dz-density)) calc(12px * var(--dz-density));
     border-top: 1px solid var(--border-color);
     border-bottom: 1px solid var(--border-color);
-    font-size: 0.95rem;
+    font-size: var(--dz-coldata-size);
     background: white;
     color: #000000;
-    font-weight: 400;
+    font-weight: var(--dz-coldata-weight);
     text-align: center;
+    line-height: 1.3;
     transition: box-shadow 0.2s;
 }
 
@@ -184,15 +334,15 @@ th:first-child {
 
 .flight-row td:first-child {
     border-left: 1px solid var(--border-color);
-    border-top-left-radius: 8px;
-    border-bottom-left-radius: 8px;
+    border-top-left-radius: 6px;
+    border-bottom-left-radius: 6px;
     text-align: left;
 }
 
 .flight-row td:last-child {
     border-right: 1px solid var(--border-color);
-    border-top-right-radius: 8px;
-    border-bottom-right-radius: 8px;
+    border-top-right-radius: 6px;
+    border-bottom-right-radius: 6px;
 }
 
 /* Airline Cell with Logo Box */
@@ -200,18 +350,19 @@ th:first-child {
     display: flex;
     align-items: center;
     justify-content: flex-start;
+    gap: 8px;
 }
 
 .logo-box {
-    width: 24px;
-    height: 24px;
+    width: 18px;
+    height: 18px;
     border-radius: 4px;
-    margin-right: 12px;
+    flex-shrink: 0;
     display: flex;
     align-items: center;
     justify-content: center;
     color: white;
-    font-size: 12px;
+    font-size: 10px;
 }
 
 /* Dynamic colors for common airlines */
@@ -229,6 +380,10 @@ th:first-child {
 }
 
 /* Dropdown Menu */
+.dropdown-wrap {
+    position: relative;
+}
+
 .dropdown-menu {
     position: absolute;
     top: calc(100% + 5px);
@@ -261,9 +416,117 @@ th:first-child {
     background-color: var(--bg-gray-50);
 }
 
+.dropdown-item.selected {
+    border-left: 3px solid var(--theme-primary);
+    padding-left: 13px;
+    background-color: var(--bg-gray-50);
+    color: var(--theme-primary);
+    font-weight: 600;
+}
+
 .dropdown-footer {
     padding: 8px 12px;
     border-top: 1px solid var(--border-color);
+}
+
+/* Design Panel */
+.design-menu {
+    min-width: 250px;
+}
+
+.design-menu .dropdown-content {
+    padding: 10px 14px;
+    max-height: 420px;
+}
+
+.design-row {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 6px 0;
+    gap: 12px;
+}
+
+.design-label {
+    font-size: 0.8rem;
+    font-weight: 600;
+    color: var(--text-primary);
+}
+
+.design-divider {
+    height: 1px;
+    background: var(--border-color);
+    margin: 6px 0;
+}
+
+.design-font-group {
+    padding: 4px 0;
+}
+
+.design-font-title {
+    font-size: 0.68rem;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.4px;
+    color: var(--text-muted);
+    margin-bottom: 4px;
+}
+
+.mini-check {
+    display: inline-flex;
+    align-items: center;
+    gap: 5px;
+    font-size: 0.78rem;
+    font-weight: 500;
+    color: var(--text-primary);
+    cursor: pointer;
+    user-select: none;
+}
+
+.mini-check input {
+    accent-color: var(--theme-primary);
+    cursor: pointer;
+    width: 13px;
+    height: 13px;
+}
+
+.stepper {
+    display: inline-flex;
+    align-items: center;
+    border: 1px solid var(--border-color);
+    border-radius: 6px;
+    overflow: hidden;
+}
+
+.stepper-btn, .fontSizeDown, .fontSizeUp {
+    background: white;
+    color: var(--text-primary);
+    border: none;
+    width: 22px;
+    height: 22px;
+    padding: 0;
+    font-size: 0.9rem;
+    line-height: 1;
+    border-radius: 0;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+}
+
+.stepper-btn:hover, .fontSizeDown:hover, .fontSizeUp:hover {
+    background: var(--bg-gray-50);
+    color: var(--theme-primary);
+}
+
+.stepper-value, .fontSizeValue {
+    display: inline-block;
+    min-width: 36px;
+    text-align: center;
+    font-size: 0.72rem;
+    font-weight: 700;
+    color: var(--text-muted);
+    padding: 0 2px;
 }
 
 .hidden {

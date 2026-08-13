@@ -7,9 +7,30 @@ let currentTheme = 'blue'; // 'blue' or 'green'
 let cityMapping = {};
 let columnVisibility = {};
 let showFlightIcons = true;
+let selectedMarkupColumn = '';
+
+// --- Design Panel state (column size + typography) ---
+// "weight"/"bold" are the non-bold/bold font weights applied per target;
+// "size" is in rem so it scales with the user's own root font size.
+const DESIGN_DEFAULTS = {
+    density: 1,
+    header: { size: 1.25, weight: 600, bold: 700 },
+    colHeader: { size: 0.85, weight: 700, bold: 800 },
+    colData: { size: 0.82, weight: 400, bold: 700 }
+};
+const DENSITY_MIN = 0.7, DENSITY_MAX = 1.5, DENSITY_STEP = 0.05;
+const FONT_MIN = 0.6, FONT_MAX = 2.2, FONT_STEP = 0.05;
+
+let designSettings = {
+    density: DESIGN_DEFAULTS.density,
+    header: { size: DESIGN_DEFAULTS.header.size, bold: false },
+    colHeader: { size: DESIGN_DEFAULTS.colHeader.size, bold: false },
+    colData: { size: DESIGN_DEFAULTS.colData.size, bold: false }
+};
 
 document.addEventListener('DOMContentLoaded', () => {
     loadData();
+    loadDesignSettings();
 
     // Attach Event Listeners
     document.getElementById('btnApplyGlobal').addEventListener('click', applyGlobalMarkup);
@@ -20,16 +41,183 @@ document.addEventListener('DOMContentLoaded', () => {
     document.getElementById('btnToggleDisplay').addEventListener('click', toggleDisplayDropdown);
     document.getElementById('btnSaveDisplay').addEventListener('click', saveColumnVisibility);
     document.getElementById('chkShowIcons').addEventListener('change', toggleIcons);
+    document.getElementById('colSelectBtn').addEventListener('click', toggleColSelectMenu);
 
-    // Close dropdown on outside click
+    document.getElementById('btnToggleDesign').addEventListener('click', toggleDesignDropdown);
+    document.getElementById('btnDensityDown').addEventListener('click', () => adjustDensity(-DENSITY_STEP));
+    document.getElementById('btnDensityUp').addEventListener('click', () => adjustDensity(DENSITY_STEP));
+    document.getElementById('btnResetDesign').addEventListener('click', resetDesignSettings);
+    document.querySelectorAll('.fontSizeDown').forEach(btn => {
+        btn.addEventListener('click', () => adjustFontSize(btn.dataset.target, -FONT_STEP));
+    });
+    document.querySelectorAll('.fontSizeUp').forEach(btn => {
+        btn.addEventListener('click', () => adjustFontSize(btn.dataset.target, FONT_STEP));
+    });
+    document.querySelectorAll('.fontBoldToggle').forEach(cb => {
+        cb.addEventListener('change', (e) => setFontBold(cb.dataset.target, e.target.checked));
+    });
+
+    // Close dropdowns on outside click
     window.addEventListener('click', (e) => {
         const dropdown = document.getElementById('displayDropdown');
         const btn = document.getElementById('btnToggleDisplay');
         if (!btn.contains(e.target) && !dropdown.contains(e.target)) {
             dropdown.classList.add('hidden');
+            btn.setAttribute('aria-expanded', 'false');
+        }
+
+        const colMenu = document.getElementById('colSelectMenu');
+        const colBtn = document.getElementById('colSelectBtn');
+        if (!colBtn.contains(e.target) && !colMenu.contains(e.target)) {
+            closeColSelectMenu();
+        }
+
+        const designDropdown = document.getElementById('designDropdown');
+        const designBtn = document.getElementById('btnToggleDesign');
+        if (!designBtn.contains(e.target) && !designDropdown.contains(e.target)) {
+            closeDesignDropdown();
         }
     });
 });
+
+function toggleColSelectMenu() {
+    const menu = document.getElementById('colSelectMenu');
+    const btn = document.getElementById('colSelectBtn');
+    const isOpen = menu.classList.contains('hidden');
+    menu.classList.toggle('hidden', !isOpen);
+    btn.setAttribute('aria-expanded', String(isOpen));
+}
+
+function closeColSelectMenu() {
+    document.getElementById('colSelectMenu').classList.add('hidden');
+    document.getElementById('colSelectBtn').setAttribute('aria-expanded', 'false');
+}
+
+function selectMarkupColumn(col, item) {
+    selectedMarkupColumn = col;
+    document.getElementById('colSelectLabel').textContent = col;
+    document.querySelectorAll('#colSelectList .dropdown-item').forEach(el => el.classList.remove('selected'));
+    if (item) item.classList.add('selected');
+    closeColSelectMenu();
+}
+
+// --- Design Panel (column size + header/column-header/column-data fonts) ---
+
+function toggleDesignDropdown() {
+    const dropdown = document.getElementById('designDropdown');
+    const btn = document.getElementById('btnToggleDesign');
+    dropdown.classList.toggle('hidden');
+    const isOpen = !dropdown.classList.contains('hidden');
+    btn.setAttribute('aria-expanded', String(isOpen));
+}
+
+function closeDesignDropdown() {
+    document.getElementById('designDropdown').classList.add('hidden');
+    document.getElementById('btnToggleDesign').setAttribute('aria-expanded', 'false');
+}
+
+function clamp(value, min, max) {
+    return Math.min(max, Math.max(min, value));
+}
+
+function round2(value) {
+    return Math.round(value * 100) / 100;
+}
+
+// Pushes the current designSettings onto the CSS custom properties that
+// dashboard.css reads (--dz-density, --dz-header-size, ...). Called after
+// every change so the table/header re-render live without a page reload.
+function applyDesignVars() {
+    const root = document.documentElement.style;
+    root.setProperty('--dz-density', designSettings.density);
+    root.setProperty('--dz-header-size', `${designSettings.header.size}rem`);
+    root.setProperty('--dz-header-weight', designSettings.header.bold ? DESIGN_DEFAULTS.header.bold : DESIGN_DEFAULTS.header.weight);
+    root.setProperty('--dz-colhead-size', `${designSettings.colHeader.size}rem`);
+    root.setProperty('--dz-colhead-weight', designSettings.colHeader.bold ? DESIGN_DEFAULTS.colHeader.bold : DESIGN_DEFAULTS.colHeader.weight);
+    root.setProperty('--dz-coldata-size', `${designSettings.colData.size}rem`);
+    root.setProperty('--dz-coldata-weight', designSettings.colData.bold ? DESIGN_DEFAULTS.colData.bold : DESIGN_DEFAULTS.colData.weight);
+}
+
+// Syncs the dropdown's own controls (percentage/px labels, bold checkboxes)
+// to match designSettings - used after load and after every change.
+function updateDesignUI() {
+    const densityLabel = document.getElementById('densityValue');
+    if (densityLabel) densityLabel.textContent = `${Math.round(designSettings.density * 100)}%`;
+
+    ['header', 'colHeader', 'colData'].forEach(target => {
+        const cfg = designSettings[target];
+        const sizeLabel = document.querySelector(`.fontSizeValue[data-target="${target}"]`);
+        const boldToggle = document.querySelector(`.fontBoldToggle[data-target="${target}"]`);
+        if (sizeLabel) sizeLabel.textContent = `${Math.round(cfg.size * 16)}px`;
+        if (boldToggle) boldToggle.checked = cfg.bold;
+    });
+}
+
+function saveDesignSettings() {
+    chrome.storage.local.set({ designSettings });
+}
+
+function mergeDesignSettings(saved) {
+    function pickSize(obj, fallback) {
+        return (obj && typeof obj.size === 'number') ? obj.size : fallback;
+    }
+    function pickBold(obj) {
+        return !!(obj && obj.bold);
+    }
+    return {
+        density: (saved && typeof saved.density === 'number') ? saved.density : DESIGN_DEFAULTS.density,
+        header: { size: pickSize(saved && saved.header, DESIGN_DEFAULTS.header.size), bold: pickBold(saved && saved.header) },
+        colHeader: { size: pickSize(saved && saved.colHeader, DESIGN_DEFAULTS.colHeader.size), bold: pickBold(saved && saved.colHeader) },
+        colData: { size: pickSize(saved && saved.colData, DESIGN_DEFAULTS.colData.size), bold: pickBold(saved && saved.colData) }
+    };
+}
+
+function loadDesignSettings() {
+    chrome.storage.local.get(['designSettings'], (result) => {
+        if (result.designSettings) {
+            designSettings = mergeDesignSettings(result.designSettings);
+        }
+        applyDesignVars();
+        updateDesignUI();
+    });
+}
+
+function adjustDensity(delta) {
+    designSettings.density = clamp(round2(designSettings.density + delta), DENSITY_MIN, DENSITY_MAX);
+    applyDesignVars();
+    updateDesignUI();
+    saveDesignSettings();
+}
+
+function adjustFontSize(target, delta) {
+    const cfg = designSettings[target];
+    if (!cfg) return;
+    cfg.size = clamp(round2(cfg.size + delta), FONT_MIN, FONT_MAX);
+    applyDesignVars();
+    updateDesignUI();
+    saveDesignSettings();
+}
+
+function setFontBold(target, bold) {
+    const cfg = designSettings[target];
+    if (!cfg) return;
+    cfg.bold = bold;
+    applyDesignVars();
+    updateDesignUI();
+    saveDesignSettings();
+}
+
+function resetDesignSettings() {
+    designSettings = {
+        density: DESIGN_DEFAULTS.density,
+        header: { size: DESIGN_DEFAULTS.header.size, bold: false },
+        colHeader: { size: DESIGN_DEFAULTS.colHeader.size, bold: false },
+        colData: { size: DESIGN_DEFAULTS.colData.size, bold: false }
+    };
+    applyDesignVars();
+    updateDesignUI();
+    saveDesignSettings();
+}
 
 function toggleTheme() {
     currentTheme = (currentTheme === 'blue') ? 'green' : 'blue';
@@ -52,8 +240,11 @@ function toggleIcons(e) {
 
 function toggleDisplayDropdown() {
     const dropdown = document.getElementById('displayDropdown');
+    const btn = document.getElementById('btnToggleDisplay');
     dropdown.classList.toggle('hidden');
-    if (!dropdown.classList.contains('hidden')) {
+    const isOpen = !dropdown.classList.contains('hidden');
+    btn.setAttribute('aria-expanded', String(isOpen));
+    if (isOpen) {
         populateDisplayDropdown();
     }
 }
@@ -362,7 +553,8 @@ function renderTable() {
 }
 
 function populateColSelect() {
-    const sel = document.getElementById('colSelect');
+    const list = document.getElementById('colSelectList');
+    const label = document.getElementById('colSelectLabel');
     const controlGroup = document.getElementById('colMarkupControl');
 
     // Hide Column Markup if only 1 fare column (e.g. "Fare")
@@ -373,12 +565,17 @@ function populateColSelect() {
         if (controlGroup) controlGroup.style.display = 'flex';
     }
 
-    sel.innerHTML = '<option value="">Select Column</option>';
+    list.innerHTML = '';
+    selectedMarkupColumn = '';
+    label.textContent = 'Select Column';
+
     fareColumns.forEach(col => {
-        const opt = document.createElement('option');
-        opt.value = col;
-        opt.textContent = col;
-        sel.appendChild(opt);
+        const item = document.createElement('div');
+        item.className = 'dropdown-item';
+        item.textContent = col;
+        item.setAttribute('role', 'option');
+        item.addEventListener('click', () => selectMarkupColumn(col, item));
+        list.appendChild(item);
     });
 }
 
@@ -412,7 +609,7 @@ function applyGlobalMarkup() {
 }
 
 function applyColMarkup() {
-    const col = document.getElementById('colSelect').value;
+    const col = selectedMarkupColumn;
     const amount = parseFloat(document.getElementById('colMarkup').value);
 
     if (!col) return alert("Select a column");
