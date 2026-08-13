@@ -34,6 +34,18 @@ already sent.
 2. Enable **Developer mode** (top right).
 3. Click **Load unpacked** and select this repository's root folder.
 
+## Build
+
+```powershell
+powershell -File scripts\build.ps1
+```
+
+Produces `build/tbo-flight-interceptor-v<version>.zip`, containing only
+`manifest.json`, `assets/`, and `src/` — the exact set of files the
+extension needs to run. Docs, sample API captures, and editor/tooling
+config are never included. The script prints every file it packaged so
+you can confirm at a glance nothing extra made it in.
+
 ## Usage
 
 1. Open [flights.tbo.in](https://flights.tbo.in) and log in as you
